@@ -68,7 +68,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <mainClass>ru.practicum.ewm.stats.service.EwmStatsServiceApp</mainClass>
+                    <mainClass>ru.practicum.stats.server.EwmStatsServiceApp</mainClass>
                 </configuration>
             </plugin>
             <plugin>
