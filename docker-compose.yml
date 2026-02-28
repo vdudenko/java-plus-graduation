@@ -3,27 +3,14 @@ services:
     image: postgres:16.1
     container_name: stats-service-db
     ports:
-      - "5431:5432"
+      - "5432:5432"
     environment:
-      - POSTGRES_DB=ewm-stats
-      - POSTGRES_USER=dbuser
-      - POSTGRES_PASSWORD=12345
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
     volumes:
       - stats_data:/var/lib/postgresql/data
     restart: on-failure
-  ewm-db:
-    image: postgres:16.1
-    container_name: ewm-main-db
-    ports:
-      - "5433:5432"
-    environment:
-      - POSTGRES_DB=ewm-main
-      - POSTGRES_USER=dbuser
-      - POSTGRES_PASSWORD=12345
-    volumes:
-      - ewm_data:/var/lib/postgresql/data
-    restart: on-failure
-
 volumes:
   stats_data:
   ewm_data:

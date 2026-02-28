@@ -23,3 +23,10 @@ eureka:
     fetchRegistry: true
     serviceUrl:
       defaultZone: http://${eureka.instance.hostname:localhost}:${eureka.instance.port:8761}/eureka/
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: DEBUG
+    org.springframework.cloud.gateway.handler.FilteringWebHandler: DEBUG
+    org.springframework.web.reactive.function.client: DEBUG

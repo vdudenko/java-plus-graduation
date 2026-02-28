@@ -11,6 +11,7 @@ import ru.yandex.practicum.main.service.comment.CommentService;
 import java.util.List;
 
 @RestController
+@RequestMapping
 @RequiredArgsConstructor
 @Validated
 public class PrivateCommentController {

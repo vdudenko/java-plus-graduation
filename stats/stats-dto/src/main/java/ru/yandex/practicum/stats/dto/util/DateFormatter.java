@@ -4,14 +4,13 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class DateFormatter {
-    public static final String PATTERN = "yyyy-MM-dd HH:mm:ss";
-    public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(PATTERN);
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_DATE_TIME;
 
     public static String format(LocalDateTime dateTime) {
-        return dateTime != null ? dateTime.format(FORMATTER) : null;
+        return dateTime.format(FORMATTER);
     }
 
-    public static LocalDateTime parse(String dateString) {
-        return dateString != null ? LocalDateTime.parse(dateString, FORMATTER) : null;
+    public static LocalDateTime parse(String dateTime) {
+        return LocalDateTime.parse(dateTime, FORMATTER);
     }
 }

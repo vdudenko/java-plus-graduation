@@ -14,6 +14,33 @@ spring:
             - Path=/admin/**
           metadata:
             type: admin
+        - id: private-comment-create
+          uri: lb://main-service
+          predicates:
+            - Path=/*/events/*/comments
+            - Method=POST
+          filters:
+            - StripPrefix=0
+          metadata:
+            type: private
+        - id: private-comment-update-delete
+          uri: lb://main-service
+          predicates:
+            - Path=/*/comments/*
+            - Method=PATCH,DELETE
+          filters:
+            - StripPrefix=0
+          metadata:
+            type: private
+        - id: private-comment-search
+          uri: lb://main-service
+          predicates:
+            - Path=/*/comments/search
+            - Method=GET
+          filters:
+            - StripPrefix=0
+          metadata:
+            type: private
         - id: private-api
           uri: lb://main-service
           predicates:
@@ -38,11 +65,18 @@ spring:
             - Path=/compilations/**
           metadata:
             type: public
-        - id: public-comments
+        - id: public-comments-read
           uri: lb://main-service
           predicates:
             - Path=/comments/**
-            - Path=/*/comments/**
+            - Method=GET
+          metadata:
+            type: public
+        - id: public-event-comments-read
+          uri: lb://main-service
+          predicates:
+            - Path=/*/comments
+            - Method=GET
           metadata:
             type: public
 management:
