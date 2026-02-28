@@ -1,21 +1,7 @@
 services:
-  stats-server:
-    build: ./stats/stats-service
-    image: stats-server-image
-    container_name: stats-server-container
-    ports:
-      - "9090:9090"
-    depends_on:
-      - stats-db
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://stats-db:5432/ewm-stats
-      - SPRING_DATASOURCE_USERNAME=dbuser
-      - SPRING_DATASOURCE_PASSWORD=12345
-    restart: on-failure
-
   stats-db:
     image: postgres:16.1
-    container_name: stats-service-db-container
+    container_name: stats-service-db
     ports:
       - "5431:5432"
     environment:
@@ -25,23 +11,6 @@ services:
     volumes:
       - stats_data:/var/lib/postgresql/data
     restart: on-failure
-
-  ewm-service:
-    build: ./ewm-main
-    image: ewm-main-image
-    container_name: ewm-main-container
-    ports:
-      - "8080:8080"
-    depends_on:
-      - ewm-db
-      - stats-server
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-db:5432/ewm-main
-      - SPRING_DATASOURCE_USERNAME=dbuser
-      - SPRING_DATASOURCE_PASSWORD=12345
-      - STATS_SERVER_URL=http://stats-server:9090
-    restart: on-failure
-
   ewm-db:
     image: postgres:16.1
     container_name: ewm-main-db
