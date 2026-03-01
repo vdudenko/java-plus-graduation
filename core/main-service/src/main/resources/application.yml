@@ -5,10 +5,3 @@ eureka:
   instance:
     preferIpAddress: true
     hostname: localhost
-
-logging:
-  level:
-    root: INFO
-    ru.yandex.practicum.main: DEBUG
-    org.springframework.web.servlet.mvc.method.annotation: TRACE
-    org.springframework.web: DEBUG
