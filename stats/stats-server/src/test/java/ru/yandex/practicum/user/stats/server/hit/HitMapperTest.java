@@ -4,8 +4,9 @@ package ru.yandex.practicum.user.stats.server.hit;
 import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.stats.dto.CreateHitDto;
 import ru.yandex.practicum.stats.dto.HitDto;
-import ru.yandex.practicum.user.stats.server.hit.mapper.HitMapper;
-import ru.yandex.practicum.user.stats.server.hit.model.Hit;
+import ru.yandex.practicum.stats.server.hit.mapper.HitMapper;
+import ru.yandex.practicum.stats.server.hit.model.Hit;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
