@@ -46,7 +46,7 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
     @Transactional
     public ParticipationRequest addRequest(Long userId, Long eventId) {
         if (!userRepository.existsById(userId)) {
-            throw new NotFoundException("User with id=%d was not found" . formatted(userId));
+            throw new NotFoundException("User with id=%d was not found".formatted(userId));
         }
 
         try {
