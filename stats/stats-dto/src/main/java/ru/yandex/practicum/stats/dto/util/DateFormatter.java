@@ -4,13 +4,13 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class DateFormatter {
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_DATE_TIME;
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     public static String format(LocalDateTime dateTime) {
-        return dateTime.format(FORMATTER);
+        return dateTime != null ? dateTime.format(FORMATTER) : null;
     }
 
     public static LocalDateTime parse(String dateTime) {
-        return LocalDateTime.parse(dateTime, FORMATTER);
+        return dateTime != null ? LocalDateTime.parse(dateTime, FORMATTER) : null;
     }
 }
