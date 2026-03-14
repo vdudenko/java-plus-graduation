@@ -191,16 +191,15 @@ public class EventServiceImpl implements EventService {
         String clientIp = getClientIp(request);
         boolean isUnique = isUniqueView(eventId, clientIp);
 
-        Map<Long, Long> viewsMap = statisticsService.getEventsViews(List.of(eventId), request, false);
+        Map<Long, Long> viewsMap = statisticsService.getEventsViews(List.of(eventId), request, true);
         Long statsViews = viewsMap.getOrDefault(eventId, 0L);
-
-        log.info("clientIp - {}, is unique - {}, statsViews - {}, current veiw", clientIp, isUnique, statsViews);
 
         Long newViews = event.getViews();
 
         if (isUnique) {
             newViews = event.getViews() + 1;
-            statisticsService.sendStats(List.of(eventId), request);
+        } else {
+            newViews = Math.max(statsViews, event.getViews());;
         }
 
         if (!newViews.equals(event.getViews())) {
