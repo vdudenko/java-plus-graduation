@@ -51,7 +51,6 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional
     public EventFullDto createEvent(Long userId, NewEventDto newEventDto) {
-
         if (!userRepository.existsById(userId)) {
             throw new UserNotExistException("User with id=" + userId + " was not found");
         }
@@ -150,7 +149,7 @@ public class EventServiceImpl implements EventService {
         if (updateEventAdminDto == null) {
             return eventMapper.toEventFullDto(event);
         }
-
+        log.info("update event");
         updateEventFieldsFromAdminDTO(event, updateEventAdminDto);
 
         if (updateEventAdminDto.getStateAction() != null) {
@@ -191,15 +190,12 @@ public class EventServiceImpl implements EventService {
         String clientIp = getClientIp(request);
         boolean isUnique = isUniqueView(eventId, clientIp);
 
-        Map<Long, Long> viewsMap = statisticsService.getEventsViews(List.of(eventId), request, true);
-        Long statsViews = viewsMap.getOrDefault(eventId, 0L);
+        statisticsService.getEventsViews(List.of(eventId), request, true);
 
         Long newViews = event.getViews();
 
         if (isUnique) {
             newViews = event.getViews() + 1;
-        } else {
-            newViews = Math.max(statsViews, event.getViews());;
         }
 
         if (!newViews.equals(event.getViews())) {
