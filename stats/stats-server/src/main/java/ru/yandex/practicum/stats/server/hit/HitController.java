@@ -11,6 +11,8 @@ import ru.yandex.practicum.stats.dto.HitDto;
 import ru.yandex.practicum.stats.dto.ViewStats;
 import ru.yandex.practicum.stats.server.hit.service.HitService;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 @RestController
@@ -37,8 +39,8 @@ public class HitController {
                                     @RequestParam(required = false) List<String> uris,
                                     @RequestParam(defaultValue = "false") Boolean unique) {
 
-        LocalDateTime startDate = LocalDateTime.parse(start);
-        LocalDateTime endDate = LocalDateTime.parse(end);
+        LocalDateTime startDate = parseFlexibleDateTime(start);
+        LocalDateTime endDate = parseFlexibleDateTime(end);
 
         if (endDate.isBefore(startDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End date is before start date");
@@ -52,6 +54,19 @@ public class HitController {
                 .build();
 
         return hitService.getStats(getStatsDto);
+    }
+
+    private LocalDateTime parseFlexibleDateTime(String dateTime) {
+        if (dateTime == null) {
+            return null;
+        }
+
+        try {
+            return LocalDateTime.parse(dateTime);
+        } catch (DateTimeParseException e) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            return LocalDateTime.parse(dateTime, formatter);
+        }
     }
 
 }
