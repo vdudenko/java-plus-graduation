@@ -285,7 +285,7 @@ public class EventServiceImpl implements EventService {
                 .map(Event::getId)
                 .collect(Collectors.toList());
 
-        Map<Long, Long> viewsMap = statisticsService.getEventsViews(eventIds, httpRequest, false);
+        Map<Long, Long> viewsMap = statisticsService.getEventsViews(eventIds, httpRequest, true);
         events.forEach(event -> event.setViews(viewsMap.getOrDefault(event.getId(), 0L)));
 
         if (shouldSort(request.getSort())) {
