@@ -1,5 +1,6 @@
 package ru.yandex.practicum.request.service;
 
+import com.google.protobuf.Timestamp;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,9 @@ import ru.yandex.practicum.request.feign.EventClient;
 import ru.yandex.practicum.request.mapper.ParticipationRequestMapper;
 import ru.yandex.practicum.request.feign.UserClient;
 import ru.yandex.practicum.request.repository.ParticipationRequestRepository;
+import ru.yandex.practicum.stats.client.CollectorClient;
+import ru.yandex.practicum.stats.proto.ActionTypeProto;
+import ru.yandex.practicum.stats.proto.UserActionProto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -28,11 +32,11 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ParticipationRequestServiceImpl implements ParticipationRequestService {
-
     private final UserClient userRepository;
     private final EventClient eventRepository;
     private final ParticipationRequestRepository requestRepository;
     private final ParticipationRequestMapper participationRequestMapper;
+    private final CollectorClient collectorClient;
 
     @Transactional
     public List<ParticipationRequest> getUserRequests(Long userId) {
@@ -51,6 +55,19 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
 
         try {
             EventFullDto event = eventRepository.getEventWithoutStatistic(eventId);
+
+            try {
+                UserActionProto action = UserActionProto.newBuilder()
+                        .setUserId(userId)
+                        .setEventId(eventId)
+                        .setActionType(ActionTypeProto.ACTION_REGISTER)
+                        .setTimestamp(Timestamp.newBuilder()
+                                .setSeconds(LocalDateTime.now().toEpochSecond(java.time.ZoneOffset.UTC)))
+                        .build();
+                collectorClient.sendUserAction(action);
+            } catch (Exception e) {
+                log.warn("Failed to send registration to collector: {}", e.getMessage());
+            }
 
             if (event.getInitiator().equals(userId)) {
                 throw new ConflictException("Initiator cannot request own event");
