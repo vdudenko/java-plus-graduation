@@ -16,20 +16,17 @@ import java.util.Map;
 public class AvroSerializer<T extends SpecificRecordBase> implements Serializer<T> {
 
     @Override
-    public void configure(Map<String, ?> configs, boolean isKey) {
-
-    }
+    public void configure(Map<String, ?> configs, boolean isKey) {}
 
     @Override
     public byte[] serialize(String topic, T data) {
         if (data == null) {
             return null;
         }
-
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Schema schema = data.getSchema();
             DatumWriter<T> writer = new SpecificDatumWriter<>(schema);
-            BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(out, null);
+            BinaryEncoder encoder = EncoderFactory.get().directBinaryEncoder(out, null);
             writer.write(data, encoder);
             encoder.flush();
             return out.toByteArray();
@@ -39,7 +36,5 @@ public class AvroSerializer<T extends SpecificRecordBase> implements Serializer<
     }
 
     @Override
-    public void close() {
-
-    }
+    public void close() {}
 }

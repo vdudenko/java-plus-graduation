@@ -22,9 +22,6 @@ public class CollectorService {
     private String topic;
 
     public void collectUserAction(UserActionProto request) {
-        log.info("Collecting user action: userId={}, eventId={}, action={}",
-                request.getUserId(), request.getEventId(), request.getActionType());
-
         Instant instant = Instant.ofEpochSecond(
                 request.getTimestamp().getSeconds(),
                 request.getTimestamp().getNanos()
@@ -37,7 +34,13 @@ public class CollectorService {
                 .setTimestamp(instant)
                 .build();
 
-        kafkaTemplate.send(topic, String.valueOf(request.getUserId()), avroRecord);
+        kafkaTemplate.send(topic, avroRecord).whenComplete((result, ex) -> {
+            if (ex == null) {
+                log.info("The message was successfully sent to Kafka: {}", result.getRecordMetadata());
+            } else {
+                log.error("Error sending a message to Kafka for a user {}", avroRecord.getUserId(), ex);
+            }
+        });;
     }
 
     private ActionTypeAvro convertActionType(ActionTypeProto protoType) {
@@ -45,7 +48,10 @@ public class CollectorService {
             case ACTION_VIEW -> ActionTypeAvro.VIEW;
             case ACTION_REGISTER -> ActionTypeAvro.REGISTER;
             case ACTION_LIKE -> ActionTypeAvro.LIKE;
-            default -> ActionTypeAvro.VIEW;
+            default -> {
+                log.error("Unknown type of action: {}", protoType);
+                throw new IllegalArgumentException("Unsupported type of action: " + protoType);
+            }
         };
     }
 }

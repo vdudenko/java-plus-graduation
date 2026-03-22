@@ -34,3 +34,10 @@ analyzer:
     view: 0.4
     register: 0.8
     like: 1.0
+logging:
+  level:
+    root: INFO
+    ru.yandex.practicum.analyzer: DEBUG
+    org.springframework.kafka: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
