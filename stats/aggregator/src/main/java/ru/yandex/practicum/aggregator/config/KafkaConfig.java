@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import ru.yandex.practicum.stats.avro.UserActionAvro;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,9 +29,9 @@ public class KafkaConfig {
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                "io.confluent.kafka.serializers.KafkaAvroDeserializer");
-        props.put("schema.registry.url", "${SCHEMA_REGISTRY_URL:http://localhost:8081}");
-        props.put("specific.avro.reader", true);
+                ru.yandex.practicum.aggregator.serialization.AvroDeserializer.class);
+        props.put(ru.yandex.practicum.aggregator.serialization.AvroDeserializer.class.getName() + ".target.type",
+                UserActionAvro.class.getName());
         return props;
     }
 
