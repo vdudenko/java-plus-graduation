@@ -29,7 +29,6 @@ public class AvroDeserializer<T extends SpecificRecordBase> implements Deseriali
             Object targetClass = configs.get("avro.deserializer.target.type");
             if (targetClass instanceof String) {
                 try {
-                    //noinspection unchecked
                     this.targetType = (Class<T>) Class.forName((String) targetClass);
                 } catch (ClassNotFoundException e) {
                     throw new SerializationException("Failed to load Avro target type: " + targetClass, e);
@@ -40,7 +39,9 @@ public class AvroDeserializer<T extends SpecificRecordBase> implements Deseriali
 
     @Override
     public T deserialize(String topic, byte[] data) {
-        if (data == null) return null;
+        if (data == null) {
+            return null;
+        }
         if (targetType == null) {
             throw new SerializationException("Target type not configured for AvroDeserializer");
         }
@@ -55,5 +56,6 @@ public class AvroDeserializer<T extends SpecificRecordBase> implements Deseriali
     }
 
     @Override
-    public void close() {}
+    public void close() {
+    }
 }
