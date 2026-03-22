@@ -9,7 +9,6 @@ import ru.yandex.practicum.stats.proto.ActionTypeProto;
 import ru.yandex.practicum.stats.proto.UserActionProto;
 import ru.yandex.practicum.stats.avro.UserActionAvro;
 import ru.yandex.practicum.stats.avro.ActionTypeAvro;
-
 import java.time.Instant;
 
 @Service
