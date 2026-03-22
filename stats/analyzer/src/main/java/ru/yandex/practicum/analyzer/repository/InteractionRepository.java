@@ -1,5 +1,6 @@
 package ru.yandex.practicum.analyzer.repository;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,8 +13,9 @@ public interface InteractionRepository extends JpaRepository<Interaction, Long> 
 
     Optional<Interaction> findByUserIdAndEventId(Long userId, Long eventId);
 
+    // ✅ ИСПРАВЛЕНО: используем Pageable вместо int limit
     @Query("SELECT i FROM Interaction i WHERE i.userId = :uid ORDER BY i.timestamp DESC")
-    List<Interaction> findByUserIdOrderByTsDesc(Long uid, int limit);
+    List<Interaction> findByUserIdOrderByTsDesc(@Param("uid") Long uid, Pageable pageable);
 
     @Query("SELECT i.eventId FROM Interaction i WHERE i.userId = :uid")
     List<Long> findEventIdsByUserId(Long uid);

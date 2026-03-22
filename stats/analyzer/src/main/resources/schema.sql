@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS similarities (
     UNIQUE (event1, event2)
 );
 
-CREATE INDEX idx_int_user_event ON interactions(user_id, event_id);
-CREATE INDEX idx_int_event ON interactions(event_id);
-CREATE INDEX idx_sim_event1 ON similarities(event1);
-CREATE INDEX idx_sim_event2 ON similarities(event2);
+CREATE INDEX IF NOT EXISTS idx_interactions_user_id ON interactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_interactions_event_id ON interactions(event_id);
+CREATE INDEX IF NOT EXISTS idx_similarities_event1 ON similarities(event1);
+CREATE INDEX IF NOT EXISTS idx_similarities_event2 ON similarities(event2);
+CREATE INDEX IF NOT EXISTS idx_int_user_event ON interactions(user_id, event_id);
