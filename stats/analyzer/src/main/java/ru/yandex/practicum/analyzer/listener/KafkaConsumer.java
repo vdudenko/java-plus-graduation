@@ -12,9 +12,7 @@ import ru.yandex.practicum.analyzer.repository.InteractionRepository;
 import ru.yandex.practicum.analyzer.repository.SimilarityRepository;
 import ru.yandex.practicum.stats.avro.EventSimilarityAvro;
 import ru.yandex.practicum.stats.avro.UserActionAvro;
-
 import java.time.Instant;
-import java.time.ZoneId;
 
 @Slf4j
 @Component
