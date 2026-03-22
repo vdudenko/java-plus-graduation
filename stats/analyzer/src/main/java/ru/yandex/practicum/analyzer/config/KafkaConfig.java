@@ -32,8 +32,6 @@ public class KafkaConfig {
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
                 "io.confluent.kafka.serializers.KafkaAvroDeserializer");
-        props.put("schema.registry.url", "${SCHEMA_REGISTRY_URL:http://localhost:8081}");
-        props.put("specific.avro.reader", true);
         return props;
     }
 
@@ -45,8 +43,6 @@ public class KafkaConfig {
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
                 "io.confluent.kafka.serializers.KafkaAvroDeserializer");
-        props.put("schema.registry.url", "${SCHEMA_REGISTRY_URL:http://localhost:8081}");
-        props.put("specific.avro.reader", true);
         return props;
     }
 
