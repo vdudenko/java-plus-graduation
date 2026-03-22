@@ -25,12 +25,16 @@ public class CollectorService {
         log.info("Collecting user action: userId={}, eventId={}, action={}",
                 request.getUserId(), request.getEventId(), request.getActionType());
 
+        Instant instant = Instant.ofEpochSecond(
+                request.getTimestamp().getSeconds(),
+                request.getTimestamp().getNanos()
+        );
+
         UserActionAvro avroRecord = UserActionAvro.newBuilder()
                 .setUserId(request.getUserId())
                 .setEventId(request.getEventId())
                 .setActionType(convertActionType(request.getActionType()))
-                .setTimestamp(Instant.ofEpochSecond(request.getTimestamp().getSeconds() * 1000L +
-                        request.getTimestamp().getNanos() / 1_000_000))
+                .setTimestamp(instant)
                 .build();
 
         kafkaTemplate.send(topic, String.valueOf(request.getUserId()), avroRecord);
