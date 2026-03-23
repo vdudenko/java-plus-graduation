@@ -7,7 +7,10 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.aggregator.service.SimilarityCalculator;
 import ru.yandex.practicum.aggregator.service.SimilarityPublisher;
+import ru.yandex.practicum.stats.avro.EventSimilarityAvro;
 import ru.yandex.practicum.stats.avro.UserActionAvro;
+
+import java.util.List;
 
 @Slf4j
 @Component
@@ -19,15 +22,17 @@ public class UserActionListener {
     @KafkaListener(topics = "stats.user-actions.v1", groupId = "aggregator-group")
     public void listen(ConsumerRecord<String, UserActionAvro> rec) {
         try {
-            UserActionAvro a = rec.value();
-            double w = switch (a.getActionType()) {
-                case VIEW -> 0.4;
-                case REGISTER -> 0.8;
-                case LIKE -> 1.0;
-            };
+            UserActionAvro action = rec.value();
 
-            calc.processUserAction(a.getUserId(), a.getEventId(), w);
-            pub.publish(a.getEventId(), a.getTimestamp());
+            // ✅ ProcessUserAction обновляет состояние И возвращает список обновлённых сходств
+            List<EventSimilarityAvro> updated = calc.processUserAction(
+                    action.getUserId(),
+                    action.getEventId(),
+                    action.getActionType()
+            );
+
+            // ✅ Отправляем только те, что реально изменились
+            pub.publish(updated);
 
         } catch (Exception e) {
             log.error("Error: {}", e.getMessage(), e);

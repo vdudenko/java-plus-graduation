@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.stats.avro.EventSimilarityAvro;
-import java.time.Instant;
 import java.util.List;
 
 @Slf4j
@@ -14,17 +13,15 @@ import java.util.List;
 public class SimilarityPublisher {
     private static final String TOPIC = "stats.events-similarity.v1";
     private final KafkaTemplate<String, EventSimilarityAvro> kafkaTemplate;
-    private final SimilarityCalculator calc;
 
-    public void publish(long triggered, Instant timestamp) {
-        List<EventSimilarityAvro> updated = calc.getUpdatedSimilarities(triggered, timestamp);
-
-        for (EventSimilarityAvro msg : updated) {
-            kafkaTemplate.send(TOPIC, String.valueOf(msg.getEventA()), msg)
+    public void publish(List<EventSimilarityAvro> similarities) {
+        for (EventSimilarityAvro sim : similarities) {
+            // ✅ Ключ = eventA (меньший ID), значение = весь объект
+            kafkaTemplate.send(TOPIC, String.valueOf(sim.getEventA()), sim)
                     .whenComplete((result, ex) -> {
                         if (ex == null) {
                             log.debug("✅ Sent: e1={}, e2={}, sim={}",
-                                    msg.getEventA(), msg.getEventB(), msg.getScore());
+                                    sim.getEventA(), sim.getEventB(), sim.getScore());
                         }
                     });
         }
