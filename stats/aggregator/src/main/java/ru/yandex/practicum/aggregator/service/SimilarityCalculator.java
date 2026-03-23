@@ -52,7 +52,7 @@ public class SimilarityCalculator {
 
             // ✅ Проверяем: взаимодействовал ли пользователь с otherEventId?
             Double weightInOther = entry.getValue().get(userId);
-            if (weightInOther == null) continue;
+//            if (weightInOther == null) continue;
 
             // ✅ Обновляем сходство только для этой пары
             updateSimilarityPair(eventId, otherEventId, oldWeight, newWeight, weightInOther)
