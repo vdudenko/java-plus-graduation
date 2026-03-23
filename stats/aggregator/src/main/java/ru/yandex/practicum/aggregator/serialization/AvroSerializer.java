@@ -16,7 +16,9 @@ import java.util.Map;
 public class AvroSerializer<T extends SpecificRecordBase> implements Serializer<T> {
 
     @Override
-    public void configure(Map<String, ?> configs, boolean isKey) {}
+    public void configure(Map<String, ?> configs, boolean isKey) {
+
+    }
 
     @Override
     public byte[] serialize(String topic, T data) {
@@ -36,5 +38,7 @@ public class AvroSerializer<T extends SpecificRecordBase> implements Serializer<
     }
 
     @Override
-    public void close() {}
+    public void close() {
+
+    }
 }

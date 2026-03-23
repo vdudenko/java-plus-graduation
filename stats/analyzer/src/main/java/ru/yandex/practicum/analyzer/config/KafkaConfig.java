@@ -1,6 +1,5 @@
 package ru.yandex.practicum.analyzer.config;
 
-import org.apache.catalina.User;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
