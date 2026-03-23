@@ -27,7 +27,7 @@ public class SimilarityCalculator {
         Double oldWeight = userWeights.getOrDefault(userId, 0.0);
 
         if (newWeight <= oldWeight) {
-            return null;
+            return Collections.emptyList();
         }
 
         userWeights.put(userId, newWeight);
@@ -46,8 +46,6 @@ public class SimilarityCalculator {
             updateSimilarityPair(eventId, otherEventId, oldWeight, newWeight, weightInOther)
                     .ifPresent(similarities::add);
         }
-
-        sendSimilarities(similarities);
         return similarities;
     }
 
@@ -97,9 +95,6 @@ public class SimilarityCalculator {
                 .setScore(score)
                 .setTimestamp(Instant.now())
                 .build();
-    }
-
-    private void sendSimilarities(List<EventSimilarityAvro> list) {
     }
 
     public List<EventSimilarityAvro> getUpdatedSimilarities(long triggered, ActionTypeAvro actionType) {

@@ -6,6 +6,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.stats.avro.EventSimilarityAvro;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -16,13 +17,15 @@ public class SimilarityPublisher {
 
     public void publish(List<EventSimilarityAvro> similarities) {
         for (EventSimilarityAvro sim : similarities) {
-            kafkaTemplate.send(TOPIC, String.valueOf(sim.getEventA()), sim)
-                    .whenComplete((result, ex) -> {
-                        if (ex == null) {
-                            log.debug("✅ Sent: e1={}, e2={}, sim={}",
-                                    sim.getEventA(), sim.getEventB(), sim.getScore());
-                        }
-                    });
+            try {
+                kafkaTemplate.send(TOPIC, String.valueOf(sim.getEventA()), sim)
+                        .get(5, TimeUnit.SECONDS);  // Ждать подтверждения
+                log.debug("Sent: e1={}, e2={}, sim={}",
+                        sim.getEventA(), sim.getEventB(), sim.getScore());
+            } catch (Exception e) {
+                log.error("Failed to send: e1={}, e2={}, error={}",
+                        sim.getEventA(), sim.getEventB(), e.getMessage());
+            }
         }
     }
 }

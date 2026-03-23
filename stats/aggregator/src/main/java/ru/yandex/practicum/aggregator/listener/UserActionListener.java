@@ -28,7 +28,10 @@ public class UserActionListener {
                     action.getEventId(),
                     action.getActionType()
             );
-            pub.publish(updated);
+
+            if (updated != null && !updated.isEmpty()) {
+                pub.publish(updated);
+            }
         } catch (Exception e) {
             log.error("Error: {}", e.getMessage(), e);
         }
