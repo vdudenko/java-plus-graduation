@@ -32,34 +32,27 @@ public class SimilarityCalculator {
         Map<Long, Double> userWeights = userEventWeights.computeIfAbsent(eventId, k -> new ConcurrentHashMap<>());
         Double oldWeight = userWeights.getOrDefault(userId, 0.0);
 
-        // ✅ Не обновляем, если новый вес не больше старого
         if (newWeight <= oldWeight) {
             return null;
         }
 
-        // ✅ Обновляем состояние
         userWeights.put(userId, newWeight);
         double delta = newWeight - oldWeight;
         eventWeightSums.merge(eventId, delta, Double::sum);
 
-        // ✅ Список для сбора обновлённых сходств
         List<EventSimilarityAvro> similarities = new ArrayList<>();
 
-        // ✅ Перебираем ТОЛЬКО другие события, с которыми взаимодействовал ЭТОТ пользователь
         for (Map.Entry<Long, Map<Long, Double>> entry : userEventWeights.entrySet()) {
             long otherEventId = entry.getKey();
             if (otherEventId == eventId) continue;
 
-            // ✅ Проверяем: взаимодействовал ли пользователь с otherEventId?
             Double weightInOther = entry.getValue().get(userId);
 //            if (weightInOther == null) continue;
 
-            // ✅ Обновляем сходство только для этой пары
             updateSimilarityPair(eventId, otherEventId, oldWeight, newWeight, weightInOther)
                     .ifPresent(similarities::add);
         }
 
-        // ✅ Отправляем только реально изменившиеся пары
         sendSimilarities(similarities);
         return similarities;
     }
@@ -78,7 +71,6 @@ public class SimilarityCalculator {
         double newMin = Math.min(newWA, weightB);
         double deltaMin = newMin - oldMin;
 
-        // Если min не изменился — сходство не меняется
         if (deltaMin == 0.0) {
             return Optional.empty();
         }
@@ -92,7 +84,6 @@ public class SimilarityCalculator {
 
         double score = currentMinSum / (normA * normB);
 
-        // ✅ Округление до 2 знаков
         score = Math.round(score * 100.0) / 100.0;
 
         return Optional.of(createSimilarityAvro(eventA, eventB, score));
@@ -107,7 +98,7 @@ public class SimilarityCalculator {
 
     private EventSimilarityAvro createSimilarityAvro(long a, long b, double score) {
         return EventSimilarityAvro.newBuilder()
-                .setEventA(Math.min(a, b))  // ✅ Всегда eventA < eventB
+                .setEventA(Math.min(a, b))
                 .setEventB(Math.max(a, b))
                 .setScore(score)
                 .setTimestamp(Instant.now())
@@ -115,15 +106,9 @@ public class SimilarityCalculator {
     }
 
     private void sendSimilarities(List<EventSimilarityAvro> list) {
-        // Здесь должна быть логика отправки через KafkaTemplate
-        // Или возврат списка для отправки внешним кодом
     }
 
-    // ✅ Публичный метод для получения списка обновлённых сходств
     public List<EventSimilarityAvro> getUpdatedSimilarities(long triggered, ActionTypeAvro actionType) {
-        // Этот метод должен вызывать processUserAction и возвращать список
-        // Но проще разделить логику: processUserAction обновляет состояние,
-        // а calculateUpdatedSimilarities возвращает список
-        return Collections.emptyList(); // Заглушка — нужно рефакторить
+        return Collections.emptyList();
     }
 }

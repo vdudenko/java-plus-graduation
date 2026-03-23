@@ -52,13 +52,11 @@ public class KafkaConfig {
         return factory;
     }
 
-    // ============ PRODUCER (для EventSimilarityAvro) ============
     @Bean
     public Map<String, Object> producerConfigs() {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        // ✅ ВАЖНО: AvroSerializer, не StringSerializer!
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, AvroSerializer.class);
         props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
         return props;

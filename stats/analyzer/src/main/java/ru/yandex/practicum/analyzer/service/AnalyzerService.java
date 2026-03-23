@@ -38,11 +38,7 @@ public class AnalyzerService {
     @KafkaListener(topics = "stats.user-actions.v1", groupId = "analyzer-user-actions-group")
     @Transactional
     public void processUserAction(UserActionAvro action) {
-        log.info("🎯 [SERVICE] Обработка действия пользователя");
-        log.info("🎯 [SERVICE] UserId: {}, EventId: {}, Type: {}",
-                action.getUserId(), action.getEventId(), action.getActionType());
         double rating = getRatingForAction(action.getActionType());
-        log.info("🎯 [SERVICE] Rating: {}", rating);
 
         interactionRepository.findByUserIdAndEventId(action.getUserId(), action.getEventId())
                 .ifPresentOrElse(
@@ -62,16 +58,12 @@ public class AnalyzerService {
                             interactionRepository.save(interaction);
                         }
                 );
-        log.info("✅ [SERVICE] Действие обработано");
+        log.info("[SERVICE] Действие обработано");
     }
 
     @KafkaListener(topics = "stats.events-similarity.v1", groupId = "analyzer-similarities-group")
     @Transactional
     public void processSimilarity(EventSimilarityAvro similarity) {
-        log.info("🎯 [SERVICE] Обработка сходства мероприятий");
-        log.info("🎯 [SERVICE] EventA: {}, EventB: {}, Score: {}",
-                similarity.getEventA(), similarity.getEventB(), similarity.getScore());
-
         long e1 = Math.min(similarity.getEventA(), similarity.getEventB());
         long e2 = Math.max(similarity.getEventA(), similarity.getEventB());
 
@@ -92,26 +84,20 @@ public class AnalyzerService {
                         }
                 );
 
-        log.info("✅ [SERVICE] Сходство обработано");
+        log.info("[SERVICE] Сходство обработано");
     }
 
     public List<RecommendedEventProto> getRecommendationsForUser(Long userId, int maxResults) {
-        log.info("🔍 [SERVICE] Запрос рекомендаций для userId: {}, maxResults: {}", userId, maxResults);
-
         List<Object[]> results = interactionRepository.findRecommendedEvents(userId, maxResults);
-        log.info("🔍 [SERVICE] Найдено {} рекомендаций", results.size());
         var result = results.stream()
                 .map(obj -> RecommendedEventProto.newBuilder().setEventId((Long) obj[0]).setScore(((Number) obj[1]).doubleValue()).build())
                 .toList();
-        log.info("✅ [SERVICE] Рекомендации сформированы");
+        log.info("[SERVICE] Рекомендации сформированы");
         return result;
     }
 
     public List<RecommendedEventProto> getSimilarEvents(Long eventId, Long userId, int maxResults) {
-        log.info("🔍 [SERVICE] Запрос похожих мероприятий. eventId: {}, userId: {}, max: {}",
-                eventId, userId, maxResults);
         List<Object[]> results = similarityRepository.findSimilarEvents(eventId, userId, maxResults);
-        log.info("🔍 [SERVICE] Найдено {} похожих мероприятий", results.size());
 
         var result = results.stream()
                 .map(obj -> RecommendedEventProto.newBuilder()
@@ -120,7 +106,7 @@ public class AnalyzerService {
                         .build())
                 .toList();
 
-        log.info("✅ [SERVICE] Похожие мероприятия сформированы");
+        log.info("[SERVICE] Похожие мероприятия сформированы");
         return result;
     }
 
@@ -135,7 +121,6 @@ public class AnalyzerService {
     public Map<Long, Double> getInteractionsCount(List<Long> eids) {
         Map<Long, Double> result = new HashMap<>();
         for (Long id : eids) {
-            // Суммируем рейтинги взаимодействий для каждого event_id
             Double sum = interactionRepository.sumRatingsByEventId(id);
             result.put(id, sum != null ? sum : 0.0);
         }

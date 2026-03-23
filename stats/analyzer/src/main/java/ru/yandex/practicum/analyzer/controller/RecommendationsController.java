@@ -31,7 +31,6 @@ public class RecommendationsController extends RecommendationsControllerGrpc.Rec
     @Override
     public void getInteractionsCount(InteractionsCountRequestProto request, StreamObserver<RecommendedEventProto> responseObserver) {
         try {
-            // ✅ ИСПРАВЛЕНО: получить данные из сервиса и отправить их
             var counts = analyzerService.getInteractionsCount(request.getEventIdList());
 
             for (Long eventId : request.getEventIdList()) {

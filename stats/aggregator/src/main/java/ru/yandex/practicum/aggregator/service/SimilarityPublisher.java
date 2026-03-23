@@ -16,7 +16,6 @@ public class SimilarityPublisher {
 
     public void publish(List<EventSimilarityAvro> similarities) {
         for (EventSimilarityAvro sim : similarities) {
-            // ✅ Ключ = eventA (меньший ID), значение = весь объект
             kafkaTemplate.send(TOPIC, String.valueOf(sim.getEventA()), sim)
                     .whenComplete((result, ex) -> {
                         if (ex == null) {

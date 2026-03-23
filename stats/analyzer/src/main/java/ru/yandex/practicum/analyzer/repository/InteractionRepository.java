@@ -13,7 +13,6 @@ public interface InteractionRepository extends JpaRepository<Interaction, Long> 
 
     Optional<Interaction> findByUserIdAndEventId(Long userId, Long eventId);
 
-    // ✅ ИСПРАВЛЕНО: используем Pageable вместо int limit
     @Query("SELECT i FROM Interaction i WHERE i.userId = :uid ORDER BY i.timestamp DESC")
     List<Interaction> findByUserIdOrderByTsDesc(@Param("uid") Long uid, Pageable pageable);
 

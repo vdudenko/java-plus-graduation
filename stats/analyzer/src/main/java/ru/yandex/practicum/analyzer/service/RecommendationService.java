@@ -30,7 +30,6 @@ public class RecommendationService {
     }
 
     public List<EventScore> getRecommendationsForUser(long uid, int max) {
-        // ✅ ИСПРАВЛЕНО: используем Pageable для лимитирования
         Pageable pageable = PageRequest.of(0, K);
         List<Interaction> recent = intRepo.findByUserIdOrderByTsDesc(uid, pageable);
 

@@ -23,17 +23,12 @@ public class UserActionListener {
     public void listen(ConsumerRecord<String, UserActionAvro> rec) {
         try {
             UserActionAvro action = rec.value();
-
-            // ✅ ProcessUserAction обновляет состояние И возвращает список обновлённых сходств
             List<EventSimilarityAvro> updated = calc.processUserAction(
                     action.getUserId(),
                     action.getEventId(),
                     action.getActionType()
             );
-
-            // ✅ Отправляем только те, что реально изменились
             pub.publish(updated);
-
         } catch (Exception e) {
             log.error("Error: {}", e.getMessage(), e);
         }
