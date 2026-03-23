@@ -62,6 +62,7 @@ public class SimilarityCalculator {
 
         double dot = 0, norm1 = 0, norm2 = 0;
 
+        // Перебираем всех пользователей из обоих событий
         Set<Long> allUsers = new HashSet<>(r1.keySet());
         allUsers.addAll(r2.keySet());
 
@@ -73,11 +74,12 @@ public class SimilarityCalculator {
             norm2 += v2 * v2;
         }
 
-        double similarity = (norm1 > 0 && norm2 > 0)
-                ? dot / (Math.sqrt(norm1) * Math.sqrt(norm2))
-                : 0.0;
+        if (norm1 == 0 || norm2 == 0) return 0.0;
 
-        return Math.round(similarity * 100.0) / 100.0;
+        double sim = dot / (Math.sqrt(norm1) * Math.sqrt(norm2));
+
+        // ✅ Округление до 2 знаков — только здесь!
+        return Math.round(sim * 100.0) / 100.0;
     }
 
     public Map<Long, Double> getEventRatingSums() {
