@@ -72,7 +72,11 @@ public class SimilarityCalculator {
             norm2 += v2 * v2;
         }
 
-        return (norm1 > 0 && norm2 > 0) ? dot / (Math.sqrt(norm1) * Math.sqrt(norm2)) : 0.0;
+        double similarity = (norm1 > 0 && norm2 > 0)
+                ? dot / (Math.sqrt(norm1) * Math.sqrt(norm2))
+                : 0.0;
+
+        return Math.round(similarity * 100.0) / 100.0;
     }
 
     public Map<Long, Double> getEventRatingSums() {
