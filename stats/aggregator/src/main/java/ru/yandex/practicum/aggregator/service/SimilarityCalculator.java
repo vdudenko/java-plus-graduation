@@ -12,14 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Component
 public class SimilarityCalculator {
-    // eventId → userId → weight (максимальный вес действия пользователя для события)
     private final Map<Long, Map<Long, Double>> userEventWeights = new ConcurrentHashMap<>();
-
-    // eventId → сумма всех весов пользователей для этого события
     private final Map<Long, Double> eventWeightSums = new ConcurrentHashMap<>();
-
-    // first event → (second event → сумма минимальных весов по общим пользователям)
-    // Ключи упорядочены: first < second
     private final Map<Long, Map<Long, Double>> minWeightsSums = new ConcurrentHashMap<>();
 
     private static final double VIEW_WEIGHT = 0.4;
@@ -47,7 +41,7 @@ public class SimilarityCalculator {
             if (otherEventId == eventId) continue;
 
             Double weightInOther = entry.getValue().get(userId);
-//            if (weightInOther == null) continue;
+            if (weightInOther == null) continue;
 
             updateSimilarityPair(eventId, otherEventId, oldWeight, newWeight, weightInOther)
                     .ifPresent(similarities::add);
