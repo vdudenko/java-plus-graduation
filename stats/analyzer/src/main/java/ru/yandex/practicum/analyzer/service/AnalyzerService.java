@@ -14,7 +14,10 @@ import ru.yandex.practicum.stats.avro.EventSimilarityAvro;
 import ru.yandex.practicum.stats.avro.UserActionAvro;
 import ru.yandex.practicum.stats.avro.ActionTypeAvro;
 import ru.yandex.practicum.stats.proto.RecommendedEventProto;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -127,5 +130,15 @@ public class AnalyzerService {
             case REGISTER -> registerWeight;
             case LIKE -> likeWeight;
         };
+    }
+
+    public Map<Long, Double> getInteractionsCount(List<Long> eids) {
+        Map<Long, Double> result = new HashMap<>();
+        for (Long id : eids) {
+            // Суммируем рейтинги взаимодействий для каждого event_id
+            Double sum = interactionRepository.sumRatingsByEventId(id);
+            result.put(id, sum != null ? sum : 0.0);
+        }
+        return result;
     }
 }

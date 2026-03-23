@@ -30,6 +30,21 @@ public class RecommendationsController extends RecommendationsControllerGrpc.Rec
 
     @Override
     public void getInteractionsCount(InteractionsCountRequestProto request, StreamObserver<RecommendedEventProto> responseObserver) {
-        responseObserver.onCompleted();
+        try {
+            // ✅ ИСПРАВЛЕНО: получить данные из сервиса и отправить их
+            var counts = analyzerService.getInteractionsCount(request.getEventIdList());
+
+            for (Long eventId : request.getEventIdList()) {
+                double score = counts.getOrDefault(eventId, 0.0);
+                RecommendedEventProto response = RecommendedEventProto.newBuilder()
+                        .setEventId(eventId)
+                        .setScore(score)
+                        .build();
+                responseObserver.onNext(response);
+            }
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            responseObserver.onError(e);
+        }
     }
 }
