@@ -62,6 +62,8 @@ public class SimilarityPublisher {
                             }
                         });
             }
+            log.info("🔍 PUBLISH: triggered={}, other={}, e1={}, e2={}, newSim={:.4f}, oldSim={}",
+                    triggered, other, e1, e2, newSim, oldSim);
         }
     }
 
