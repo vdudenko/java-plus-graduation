@@ -71,11 +71,5 @@ public class RecommendationService {
         return ss > 0 ? ws / ss : base;
     }
 
-    public Map<Long, Double> getInteractionsCount(List<Long> eids) {
-        Map<Long, Double> r = new HashMap<>();
-        for (Long id : eids) r.put(id, Optional.ofNullable(intRepo.sumRatingsByEventId(id)).orElse(0.0));
-        return r;
-    }
-
     public record EventScore(long eventId, double score) {}
 }

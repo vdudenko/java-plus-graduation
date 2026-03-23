@@ -14,10 +14,9 @@ import ru.yandex.practicum.stats.avro.EventSimilarityAvro;
 import ru.yandex.practicum.stats.avro.UserActionAvro;
 import ru.yandex.practicum.stats.avro.ActionTypeAvro;
 import ru.yandex.practicum.stats.proto.RecommendedEventProto;
-
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +34,11 @@ public class AnalyzerService {
     @Value("${analyzer.action-weight.like:1.0}")
     private double likeWeight;
 
-    @KafkaListener(topics = "stats.user-actions.v1", groupId = "analyzer-user-actions-group")
+    @KafkaListener(
+        topics = "stats.user-actions.v1",
+        groupId = "analyzer-user-actions-group",
+        containerFactory = "userActionsKafkaListenerContainerFactory"
+    )
     @Transactional
     public void processUserAction(UserActionAvro action) {
         double rating = getRatingForAction(action.getActionType());
@@ -61,7 +64,11 @@ public class AnalyzerService {
         log.info("[SERVICE] Действие обработано");
     }
 
-    @KafkaListener(topics = "stats.events-similarity.v1", groupId = "analyzer-similarities-group")
+    @KafkaListener(
+        topics = "stats.events-similarity.v1",
+        groupId = "analyzer-similarities-group",
+        containerFactory = "similaritiesKafkaListenerContainerFactory"
+    )
     @Transactional
     public void processSimilarity(EventSimilarityAvro similarity) {
         long e1 = Math.min(similarity.getEventA(), similarity.getEventB());
@@ -119,11 +126,11 @@ public class AnalyzerService {
     }
 
     public Map<Long, Double> getInteractionsCount(List<Long> eids) {
-        Map<Long, Double> result = new HashMap<>();
-        for (Long id : eids) {
-            Double sum = interactionRepository.sumRatingsByEventId(id);
-            result.put(id, sum != null ? sum : 0.0);
-        }
-        return result;
+        return interactionRepository.findByEventIdIn(eids)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        Interaction::getEventId,
+                        Collectors.summingDouble(Interaction::getRating)
+                ));
     }
 }

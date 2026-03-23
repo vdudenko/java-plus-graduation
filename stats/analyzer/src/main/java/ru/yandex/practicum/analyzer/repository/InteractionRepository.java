@@ -32,4 +32,7 @@ public interface InteractionRepository extends JpaRepository<Interaction, Long> 
         LIMIT :maxResults
         """, nativeQuery = true)
     List<Object[]> findRecommendedEvents(@Param("userId") Long userId, @Param("maxResults") int maxResults);
+
+    @Query("SELECT i FROM Interaction i WHERE i.eventId IN :eventIds")
+    List<Interaction> findByEventIdIn(@Param("eventIds") List<Long> eventIds);
 }
