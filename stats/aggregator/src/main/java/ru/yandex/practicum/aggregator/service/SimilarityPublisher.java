@@ -6,7 +6,9 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.stats.avro.EventSimilarityAvro;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -14,26 +16,37 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class SimilarityPublisher {
     private static final String TOPIC = "stats.events-similarity.v1";
+    private static final double CHANGE_THRESHOLD = 0.01; // Порог изменения
 
     private final KafkaTemplate<String, EventSimilarityAvro> kafkaTemplate;
     private final SimilarityCalculator calc;
 
-    // Храним последние отправленные значения
-    private final Map<Map.Entry<Long, Long>, Double> lastSent = new ConcurrentHashMap<>();
+    // Кэш последних отправленных значений
+    private final Map<String, Double> lastSent = new ConcurrentHashMap<>();
 
     public void publish(long triggered) {
+        // Получаем пользователей, которые взаимодействовали с triggered event
+        Set<Long> triggeredUsers = getUsersForEvent(triggered);
+        if (triggeredUsers.isEmpty()) return;
+
         for (Long other : calc.getEventRatingSums().keySet()) {
             if (other.equals(triggered)) continue;
+
+            // ✅ Проверяем, есть ли общие пользователи
+            Set<Long> otherUsers = getUsersForEvent(other);
+            if (Collections.disjoint(triggeredUsers, otherUsers)) {
+                continue; // Нет общих пользователей — не отправляем
+            }
 
             long e1 = Math.min(triggered, other);
             long e2 = Math.max(triggered, other);
             double newSim = calc.calculateSimilarity(triggered, other);
 
-            Map.Entry<Long, Long> key = Map.entry(e1, e2);
+            String key = e1 + ":" + e2;
             Double oldSim = lastSent.get(key);
 
-            // ✅ Отправляем только если значение изменилось
-            if (oldSim == null || Math.abs(newSim - oldSim) > 0.0001) {
+            // ✅ Отправляем только если значение изменилось существенно
+            if (oldSim == null || Math.abs(newSim - oldSim) >= CHANGE_THRESHOLD) {
                 EventSimilarityAvro msg = EventSimilarityAvro.newBuilder()
                         .setEventA(e1)
                         .setEventB(e2)
@@ -44,14 +57,18 @@ public class SimilarityPublisher {
                 kafkaTemplate.send(TOPIC, String.valueOf(e1), msg)
                         .whenComplete((result, ex) -> {
                             if (ex == null) {
-                                lastSent.put(key, newSim);  // ✅ Запоминаем отправленное
-                                log.debug("✅ Sent similarity update: e1={}, e2={}, old={}, new={}",
-                                        e1, e2, oldSim, newSim);
+                                lastSent.put(key, newSim);
+                                log.debug("✅ Sent: e1={}, e2={}, sim={}", e1, e2, newSim);
                             }
                         });
-            } else {
-                log.debug("⏭️ Skipping unchanged similarity: e1={}, e2={}, score={}", e1, e2, newSim);
             }
         }
+    }
+
+    // ✅ Метод для получения пользователей по event (реализуйте в SimilarityCalculator)
+    private Set<Long> getUsersForEvent(long eventId) {
+        // Это должен вернуть SimilarityCalculator или InteractionRepository
+        // Например: return interactionRepository.findUserIdsByEventId(eventId);
+        return calc.getUsersForEvent(eventId);
     }
 }

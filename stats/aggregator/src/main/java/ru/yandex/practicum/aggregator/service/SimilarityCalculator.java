@@ -3,7 +3,9 @@ package ru.yandex.practicum.aggregator.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -55,15 +57,29 @@ public class SimilarityCalculator {
     }
 
     public double calculateSimilarity(long e1, long e2) {
-        long first = Math.min(e1, e2);
-        long second = Math.max(e1, e2);
-        double sMin = minRatingSums.getOrDefault(first, Map.of()).getOrDefault(second, 0.0);
-        double s1 = eventRatingSums.getOrDefault(e1, 0.0);
-        double s2 = eventRatingSums.getOrDefault(e2, 0.0);
-        return (s1 > 0 && s2 > 0) ? sMin / Math.sqrt(s1 * s2) : 0.0;
+        Map<Long, Double> r1 = eventUserRatings.getOrDefault(e1, Map.of());
+        Map<Long, Double> r2 = eventUserRatings.getOrDefault(e2, Map.of());
+
+        double dot = 0, norm1 = 0, norm2 = 0;
+        Set<Long> allUsers = new HashSet<>(r1.keySet());
+        allUsers.addAll(r2.keySet());
+
+        for (Long u : allUsers) {
+            double v1 = r1.getOrDefault(u, 0.0);
+            double v2 = r2.getOrDefault(u, 0.0);
+            dot += v1 * v2;
+            norm1 += v1 * v1;
+            norm2 += v2 * v2;
+        }
+
+        return (norm1 > 0 && norm2 > 0) ? dot / (Math.sqrt(norm1) * Math.sqrt(norm2)) : 0.0;
     }
 
     public Map<Long, Double> getEventRatingSums() {
         return new ConcurrentHashMap<>(eventRatingSums);
+    }
+
+    public Set<Long> getUsersForEvent(long eventId) {
+        return eventUserRatings.getOrDefault(eventId, Map.of()).keySet();
     }
 }
