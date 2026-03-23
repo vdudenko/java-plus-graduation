@@ -19,12 +19,20 @@ public class SimilarityPublisher {
         for (EventSimilarityAvro sim : similarities) {
             try {
                 kafkaTemplate.send(TOPIC, String.valueOf(sim.getEventA()), sim)
-                        .get(5, TimeUnit.SECONDS);  // Ждать подтверждения
+                        .get(10, TimeUnit.SECONDS);
                 log.debug("Sent: e1={}, e2={}, sim={}",
                         sim.getEventA(), sim.getEventB(), sim.getScore());
             } catch (Exception e) {
-                log.error("Failed to send: e1={}, e2={}, error={}",
-                        sim.getEventA(), sim.getEventB(), e.getMessage());
+                log.warn("First send failed: e1={}, e2={}, retrying...",
+                        sim.getEventA(), sim.getEventB());
+                try {
+                    kafkaTemplate.send(TOPIC, String.valueOf(sim.getEventA()), sim)
+                            .get(10, TimeUnit.SECONDS);
+                    log.debug("Retry succeeded: e1={}, e2={}", sim.getEventA(), sim.getEventB());
+                } catch (Exception retryEx) {
+                    log.error("Failed to send after retry: e1={}, e2={}, error={}",
+                            sim.getEventA(), sim.getEventB(), retryEx.getMessage());
+                }
             }
         }
     }

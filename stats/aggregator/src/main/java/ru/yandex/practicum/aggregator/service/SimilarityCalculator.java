@@ -41,7 +41,6 @@ public class SimilarityCalculator {
             if (otherEventId == eventId) continue;
 
             Double weightInOther = entry.getValue().get(userId);
-            if (weightInOther == null) continue;
 
             updateSimilarityPair(eventId, otherEventId, oldWeight, newWeight, weightInOther)
                     .ifPresent(similarities::add);
