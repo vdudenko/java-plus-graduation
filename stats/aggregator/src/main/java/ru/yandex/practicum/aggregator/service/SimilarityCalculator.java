@@ -3,6 +3,8 @@ package ru.yandex.practicum.aggregator.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -18,13 +20,13 @@ public class SimilarityCalculator {
 
     public void processUserAction(long userId, long eventId, double rating) {
         Map<Long, Double> userRatings = eventUserRatings.computeIfAbsent(eventId, k -> new ConcurrentHashMap<>());
-        Double old = userRatings.put(userId, rating);
-        if (old != null && rating <= old) {
-            return;
-        }
 
-        double delta = rating - (old != null ? old : 0.0);
-        eventRatingSums.compute(eventId, (k, v) -> (v == null ? 0.0 : v) + delta);
+        // ✅ СУММИРУЕМ все рейтинги пользователя для события
+        double currentRating = userRatings.getOrDefault(userId, 0.0);
+        userRatings.put(userId, currentRating + rating);
+
+        // Обновляем сумму рейтингов события
+        eventRatingSums.compute(eventId, (k, v) -> (v == null ? 0.0 : v) + rating);
 
         for (Long other : eventUserRatings.keySet()) {
             if (other.equals(eventId)) {
@@ -62,13 +64,13 @@ public class SimilarityCalculator {
 
         double dot = 0, norm1 = 0, norm2 = 0;
 
-        // Перебираем всех пользователей из обоих событий
-        Set<Long> allUsers = new HashSet<>(r1.keySet());
-        allUsers.addAll(r2.keySet());
+        // Перебираем только общих пользователей
+        Set<Long> commonUsers = new HashSet<>(r1.keySet());
+        commonUsers.retainAll(r2.keySet());
 
-        for (Long u : allUsers) {
-            double v1 = r1.getOrDefault(u, 0.0);
-            double v2 = r2.getOrDefault(u, 0.0);
+        for (Long u : commonUsers) {
+            double v1 = r1.get(u);
+            double v2 = r2.get(u);
             dot += v1 * v2;
             norm1 += v1 * v1;
             norm2 += v2 * v2;
@@ -76,10 +78,11 @@ public class SimilarityCalculator {
 
         if (norm1 == 0 || norm2 == 0) return 0.0;
 
-        double sim = dot / (Math.sqrt(norm1) * Math.sqrt(norm2));
+        // ✅ Альтернативная формула
+        double sim = dot / Math.sqrt(norm1 * norm2);
 
-        // ✅ Округление до 2 знаков — только здесь!
-        return Math.round(sim * 100.0) / 100.0;
+        // ✅ Округление через BigDecimal для точности
+        return BigDecimal.valueOf(sim).setScale(2, RoundingMode.HALF_UP).doubleValue();
     }
 
     public Map<Long, Double> getEventRatingSums() {
