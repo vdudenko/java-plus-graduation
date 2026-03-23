@@ -61,6 +61,7 @@ public class SimilarityCalculator {
         Map<Long, Double> r2 = eventUserRatings.getOrDefault(e2, Map.of());
 
         double dot = 0, norm1 = 0, norm2 = 0;
+
         Set<Long> allUsers = new HashSet<>(r1.keySet());
         allUsers.addAll(r2.keySet());
 

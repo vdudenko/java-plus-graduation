@@ -21,7 +21,6 @@ public class SimilarityPublisher {
     private final KafkaTemplate<String, EventSimilarityAvro> kafkaTemplate;
     private final SimilarityCalculator calc;
 
-    // Кэш последних отправленных значений
     private final Map<String, Double> lastSent = new ConcurrentHashMap<>();
 
     public void publish(long triggered) {
@@ -32,20 +31,19 @@ public class SimilarityPublisher {
         for (Long other : calc.getEventRatingSums().keySet()) {
             if (other.equals(triggered)) continue;
 
-            // ✅ Проверяем, есть ли общие пользователи
             Set<Long> otherUsers = getUsersForEvent(other);
             if (Collections.disjoint(triggeredUsers, otherUsers)) {
-                continue; // Нет общих пользователей — не отправляем
+                continue;
             }
 
             long e1 = Math.min(triggered, other);
             long e2 = Math.max(triggered, other);
             double newSim = calc.calculateSimilarity(triggered, other);
+            newSim = Math.round(newSim * 100.0) / 100.0;
 
             String key = e1 + ":" + e2;
             Double oldSim = lastSent.get(key);
 
-            // ✅ Отправляем только если значение изменилось существенно
             if (oldSim == null || Math.abs(newSim - oldSim) >= CHANGE_THRESHOLD) {
                 EventSimilarityAvro msg = EventSimilarityAvro.newBuilder()
                         .setEventA(e1)
@@ -54,23 +52,19 @@ public class SimilarityPublisher {
                         .setTimestamp(Instant.now())
                         .build();
 
+                double finalNewSim = newSim;
                 kafkaTemplate.send(TOPIC, String.valueOf(e1), msg)
                         .whenComplete((result, ex) -> {
                             if (ex == null) {
-                                lastSent.put(key, newSim);
-                                log.debug("✅ Sent: e1={}, e2={}, sim={}", e1, e2, newSim);
+                                lastSent.put(key, finalNewSim);
+                                log.debug("Sent: e1={}, e2={}, sim={}", e1, e2, finalNewSim);
                             }
                         });
             }
-            log.info("🔍 PUBLISH: triggered={}, other={}, e1={}, e2={}, newSim={:.4f}, oldSim={}",
-                    triggered, other, e1, e2, newSim, oldSim);
         }
     }
 
-    // ✅ Метод для получения пользователей по event (реализуйте в SimilarityCalculator)
     private Set<Long> getUsersForEvent(long eventId) {
-        // Это должен вернуть SimilarityCalculator или InteractionRepository
-        // Например: return interactionRepository.findUserIdsByEventId(eventId);
         return calc.getUsersForEvent(eventId);
     }
 }
