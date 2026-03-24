@@ -8,6 +8,3 @@ spring:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: ru.yandex.practicum.aggregator.serialization.AvroDeserializer
-      properties:
-        max.poll.interval.ms: 300000
-        heartbeat.interval.ms: 3000
