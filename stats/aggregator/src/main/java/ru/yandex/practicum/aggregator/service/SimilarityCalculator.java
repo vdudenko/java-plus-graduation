@@ -37,16 +37,20 @@ public class SimilarityCalculator {
         double delta = newWeight - oldWeight;
         eventWeightSums.merge(eventId, delta, Double::sum);
 
-        List<EventSimilarityAvro> similarities = new ArrayList<>();
-
         for (Map.Entry<Long, Map<Long, Double>> entry : userEventWeights.entrySet()) {
-            long otherEventId = entry.getKey();
-            if (otherEventId == eventId) continue;
+            long eventB = entry.getKey();
+            if (eventB == eventId) continue;
 
-            Double weightInOther = entry.getValue().getOrDefault(userId, 0.0);
+            Map<Long, Double> otherWeights = entry.getValue();
+            if (!otherWeights.containsKey(userId)) {
+                continue;
+            }
 
-            updateSimilarityPair(eventId, otherEventId, oldWeight, newWeight, weightInOther, actionTimestamp)
-                    .ifPresent(pub::publish);
+            Double otherWeight = otherWeights.get(userId);
+            Double pairMinSum = updatePairMinSum(eventId, eventB, oldWeight, newWeight, otherWeight);
+            Double similarity = calculatePairSimilarity(eventId, eventB, pairMinSum);
+
+            updateSimilarityPair(eventId, eventB, similarity, actionTimestamp).ifPresent(pub::publish);
         }
     }
 
@@ -58,30 +62,40 @@ public class SimilarityCalculator {
         };
     }
 
-    private Optional<EventSimilarityAvro> updateSimilarityPair(long eventA, long eventB,
-                                                               double oldWA, double newWA, double weightB, Instant timestamp) {
-        double oldMin = Math.min(oldWA, weightB);
-        double newMin = Math.min(newWA, weightB);
-        double deltaMin = newMin - oldMin;
-
-        if (deltaMin == 0.0) {
-            return Optional.empty();
-        }
-
-        double currentMinSum = updateMinWeightsSum(eventA, eventB, deltaMin);
-
-        double normA = Math.sqrt(eventWeightSums.getOrDefault(eventA, 0.0));
-        double normB = Math.sqrt(eventWeightSums.getOrDefault(eventB, 0.0));
-
-        if (normA == 0 || normB == 0) return Optional.empty();
-
-        double score = currentMinSum / (normA * normB);
-        return Optional.of(createSimilarityAvro(eventA, eventB, score, timestamp));
+    private Optional<EventSimilarityAvro> updateSimilarityPair(long eventA, long eventB, Double sim, Instant timestamp) {
+        return Optional.of(createSimilarityAvro(eventA, eventB, sim, timestamp));
     }
 
-    private double updateMinWeightsSum(long a, long b, double delta) {
-        String key = buildPairKey(a, b);
-        return minWeightsSums.merge(key, delta, Double::sum);
+    private Double updatePairMinSum(long eventA, long eventB, double oldWA, double newWA, double weightB) {
+        String pairKey = buildPairKey(eventA, eventB);
+
+        Double oldMin = Math.min(oldWA, weightB);
+        Double newMin = Math.min(newWA, weightB);
+
+        if (oldMin.equals(newMin)) {
+            return minWeightsSums.getOrDefault(pairKey, 0.0);
+        }
+
+        Double currentSum = minWeightsSums.getOrDefault(pairKey, 0.0);
+        Double updatedSum = currentSum - oldMin + newMin;
+        minWeightsSums.put(pairKey, updatedSum);
+
+        return updatedSum;
+    }
+
+    private Double calculatePairSimilarity(Long eventA, Long eventB, Double min) {
+        if (min == 0.0) {
+            return 0.0;
+        }
+
+        Double sumA = eventWeightSums.getOrDefault(eventA, 0.0);
+        Double sumB = eventWeightSums.getOrDefault(eventB, 0.0);
+
+        if (sumA == 0.0 || sumB == 0.0) {
+            return 0.0;
+        }
+
+        return min / (Math.sqrt(sumA) * Math.sqrt(sumB));
     }
 
     private String buildPairKey(long id1, long id2) {
