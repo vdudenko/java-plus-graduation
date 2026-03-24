@@ -16,12 +16,13 @@ public interface SimilarityRepository extends JpaRepository<Similarity, Long> {
     Optional<Similarity> findByOrdered(Long e1, Long e2);
 
     @Query(value = """
-        SELECT s.event2, AVG(i.rating) as avg_rating
-        FROM similarities s
-        JOIN interactions i ON s.event2 = i.event_id
-        WHERE s.event1 = :eventId AND i.user_id != :userId
-        ORDER BY s.similarity DESC
-        LIMIT :maxResults
+            SELECT s FROM Similarity s " +
+            "WHERE (s.event1 = :eid OR s.event2 = :eid) " +
+            "AND s.similarity > 0 " +
+            "ORDER BY s.similarity DESC
         """, nativeQuery = true)
-    List<Object[]> findSimilarEvents(@Param("eventId") Long eventId, @Param("userId") Long userId, @Param("maxResults") int maxResults);
+    List<Similarity> findAllByEventIdOrdered(@Param("eid") Long eid);
+
+    @Query("SELECT s FROM Similarity s WHERE s.event1 IN :eventIds OR s.event2 IN :eventIds")
+    List<Similarity> findAllByEventIds(@Param("eventIds") List<Long> eventIds);
 }

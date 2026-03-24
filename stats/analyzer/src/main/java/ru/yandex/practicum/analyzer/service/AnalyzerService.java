@@ -3,6 +3,7 @@ package ru.yandex.practicum.analyzer.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,8 +15,8 @@ import ru.yandex.practicum.stats.avro.EventSimilarityAvro;
 import ru.yandex.practicum.stats.avro.UserActionAvro;
 import ru.yandex.practicum.stats.avro.ActionTypeAvro;
 import ru.yandex.practicum.stats.proto.RecommendedEventProto;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -95,26 +96,82 @@ public class AnalyzerService {
     }
 
     public List<RecommendedEventProto> getRecommendationsForUser(Long userId, int maxResults) {
-        List<Object[]> results = interactionRepository.findRecommendedEvents(userId, maxResults);
-        var result = results.stream()
-                .map(obj -> RecommendedEventProto.newBuilder().setEventId((Long) obj[0]).setScore(((Number) obj[1]).doubleValue()).build())
-                .toList();
-        log.info("[SERVICE] Рекомендации сформированы");
-        return result;
+        List<Interaction> recentInteractions = interactionRepository
+                .findByUserIdOrderByTsDesc(userId, PageRequest.of(0, 20));
+
+        if (recentInteractions.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<Long> interactedEvents = recentInteractions.stream()
+                .map(Interaction::getEventId)
+                .collect(Collectors.toSet());
+
+
+        List<Similarity> allSimilarities = similarityRepository
+                .findAllByEventIds(new ArrayList<>(interactedEvents));
+
+        Map<Long, Double> candidateScores = allSimilarities.stream()
+                .map(sim -> {
+                    Long candidateId = interactedEvents.contains(sim.getEvent1())
+                            ? sim.getEvent2()
+                            : sim.getEvent1();
+                    return new AbstractMap.SimpleEntry<>(candidateId, sim.getSimilarity());
+                })
+                .filter(entry -> !interactedEvents.contains(entry.getKey()))
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        Double::sum
+                ));
+
+        // 4. Возвращаем топ-N
+        return candidateScores.entrySet().stream()
+                .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
+                .limit(maxResults)
+                .map(entry -> RecommendedEventProto.newBuilder()
+                        .setEventId(entry.getKey())
+                        .setScore(entry.getValue())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     public List<RecommendedEventProto> getSimilarEvents(Long eventId, Long userId, int maxResults) {
-        List<Object[]> results = similarityRepository.findSimilarEvents(eventId, userId, maxResults);
+        List<Similarity> results = similarityRepository.findAllByEventIdOrdered(eventId);
 
-        var result = results.stream()
-                .map(obj -> RecommendedEventProto.newBuilder()
-                        .setEventId((Long) obj[0])
-                        .setScore(((Number) obj[1]).doubleValue())
+        if (results.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> candidateIds = results.stream()
+                .map(sim -> getPairEventId(sim, eventId))
+                .collect(Collectors.toList());
+
+        Set<Long> interactedEventIds = new HashSet<>(
+                interactionRepository.findByUserIdAndEventIdIn(userId, candidateIds)
+                        .stream()
+                        .map(Interaction::getEventId)
+                        .collect(Collectors.toList())
+        );
+
+        return results.stream()
+                .map(sim -> {
+                    Long candidateId = getPairEventId(sim, eventId);
+                    return new AbstractMap.SimpleEntry<>(candidateId, sim.getSimilarity());
+                })
+                .filter(entry -> !interactedEventIds.contains(entry.getKey()))
+                .limit(maxResults)
+                .map(entry -> RecommendedEventProto.newBuilder()
+                        .setEventId(entry.getKey())
+                        .setScore(entry.getValue())
                         .build())
-                .toList();
+                .collect(Collectors.toList());
+    }
 
-        log.info("[SERVICE] Похожие мероприятия сформированы");
-        return result;
+    private Long getPairEventId(Similarity similarity, Long sourceEventId) {
+        return similarity.getEvent1().equals(sourceEventId)
+                ? similarity.getEvent2()
+                : similarity.getEvent1();
     }
 
     private double getRatingForAction(ActionTypeAvro actionType) {

@@ -19,20 +19,10 @@ public interface InteractionRepository extends JpaRepository<Interaction, Long> 
     @Query("SELECT i.eventId FROM Interaction i WHERE i.userId = :uid")
     List<Long> findEventIdsByUserId(Long uid);
 
-    @Query("SELECT SUM(i.rating) FROM Interaction i WHERE i.eventId = :eid")
-    Double sumRatingsByEventId(Long eid);
-
-    @Query(value = """
-        SELECT i.event_id, AVG(i.rating) as avg_rating
-        FROM interactions i
-        WHERE i.user_id != :userId
-          AND i.event_id IN (SELECT s.event2 FROM similarities s WHERE s.event1 IN (SELECT event_id FROM interactions WHERE user_id = :userId))
-        GROUP BY i.event_id
-        ORDER BY avg_rating DESC
-        LIMIT :maxResults
-        """, nativeQuery = true)
-    List<Object[]> findRecommendedEvents(@Param("userId") Long userId, @Param("maxResults") int maxResults);
-
     @Query("SELECT i FROM Interaction i WHERE i.eventId IN :eventIds")
     List<Interaction> findByEventIdIn(@Param("eventIds") List<Long> eventIds);
+
+    // Получить взаимодействия пользователя для списка событий
+    @Query("SELECT i FROM Interaction i WHERE i.userId = :uid AND i.eventId IN :eventIds")
+    List<Interaction> findByUserIdAndEventIdIn(@Param("uid") Long uid, @Param("eventIds") List<Long> eventIds);
 }
