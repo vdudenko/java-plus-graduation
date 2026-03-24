@@ -21,20 +21,16 @@ public class UserActionListener {
 
     @KafkaListener(topics = "stats.user-actions.v1", groupId = "aggregator-group")
     public void listen(ConsumerRecord<String, UserActionAvro> rec) {
-        try {
-            UserActionAvro action = rec.value();
-            List<EventSimilarityAvro> updated = calc.processUserAction(
-                    action.getUserId(),
-                    action.getEventId(),
-                    action.getActionType(),
-                    action.getTimestamp()
-            );
+        UserActionAvro action = rec.value();
+        List<EventSimilarityAvro> updated = calc.processUserAction(
+                action.getUserId(),
+                action.getEventId(),
+                action.getActionType(),
+                action.getTimestamp()
+        );
 
-            if (updated != null && !updated.isEmpty()) {
-                pub.publish(updated);
-            }
-        } catch (Exception e) {
-            log.error("Error: {}", e.getMessage(), e);
+        if (updated != null && !updated.isEmpty()) {
+            pub.publish(updated);
         }
     }
 }

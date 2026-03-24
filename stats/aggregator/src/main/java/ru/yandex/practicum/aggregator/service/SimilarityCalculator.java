@@ -40,13 +40,12 @@ public class SimilarityCalculator {
             long otherEventId = entry.getKey();
             if (otherEventId == eventId) continue;
 
-            Double weightInOther = entry.getValue().getOrDefault(userId, 0.0);
-            if (weightInOther == null) {
-                continue;
-            }
+            Double weightInOther = entry.getValue().get(userId);
 
-            updateSimilarityPair(eventId, otherEventId, oldWeight, newWeight, weightInOther, actionTimestamp)
-                    .ifPresent(similarities::add);
+            if (weightInOther != null) {
+                updateSimilarityPair(eventId, otherEventId, oldWeight, newWeight, weightInOther, actionTimestamp)
+                        .ifPresent(similarities::add);
+            }
         }
         return similarities;
     }
