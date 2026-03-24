@@ -1,5 +1,6 @@
 package ru.yandex.practicum.aggregator.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.stats.avro.ActionTypeAvro;
@@ -11,7 +12,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class SimilarityCalculator {
+    private final SimilarityPublisher pub;
     private final Map<Long, Map<Long, Double>> userEventWeights = new ConcurrentHashMap<>();
     private final Map<Long, Double> eventWeightSums = new ConcurrentHashMap<>();
     private final Map<String, Double> minWeightsSums = new ConcurrentHashMap<>();
@@ -20,14 +23,14 @@ public class SimilarityCalculator {
     private static final double REGISTER_WEIGHT = 0.8;
     private static final double LIKE_WEIGHT = 1.0;
 
-    public List<EventSimilarityAvro> processUserAction(long userId, long eventId, ActionTypeAvro actionType, Instant actionTimestamp) {
+    public void processUserAction(long userId, long eventId, ActionTypeAvro actionType, Instant actionTimestamp) {
         double newWeight = getActionWeight(actionType);
 
         Map<Long, Double> userWeights = userEventWeights.computeIfAbsent(eventId, k -> new ConcurrentHashMap<>());
         Double oldWeight = userWeights.getOrDefault(userId, 0.0);
 
         if (newWeight <= oldWeight) {
-            return Collections.emptyList();
+            return;
         }
 
         userWeights.put(userId, newWeight);
@@ -44,10 +47,11 @@ public class SimilarityCalculator {
 
             if (weightInOther != null) {
                 updateSimilarityPair(eventId, otherEventId, oldWeight, newWeight, weightInOther, actionTimestamp)
-                        .ifPresent(similarities::add);
+                        .ifPresent(sim -> {
+                            pub.publish(String.valueOf(sim.getEventA()), sim);
+                        });
             }
         }
-        return similarities;
     }
 
     private double getActionWeight(ActionTypeAvro type) {
@@ -76,7 +80,6 @@ public class SimilarityCalculator {
         if (normA == 0 || normB == 0) return Optional.empty();
 
         double score = currentMinSum / (normA * normB);
-
         return Optional.of(createSimilarityAvro(eventA, eventB, score, timestamp));
     }
 
@@ -98,9 +101,5 @@ public class SimilarityCalculator {
                 .setScore(score)
                 .setTimestamp(timestamp)
                 .build();
-    }
-
-    public List<EventSimilarityAvro> getUpdatedSimilarities(long triggered, ActionTypeAvro actionType) {
-        return Collections.emptyList();
     }
 }

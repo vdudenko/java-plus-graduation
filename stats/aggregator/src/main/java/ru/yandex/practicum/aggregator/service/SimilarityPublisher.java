@@ -36,4 +36,14 @@ public class SimilarityPublisher {
             }
         }
     }
+
+    public void publish(String simId, EventSimilarityAvro sim) {
+        kafkaTemplate.send(TOPIC, String.valueOf(sim.getEventA()), sim)
+                .whenComplete((result, ex) -> {
+                    if (ex == null) {
+                        log.debug("✅ Sent: e1={}, e2={}, sim={}",
+                                sim.getEventA(), sim.getEventB(), sim.getScore());
+                    }
+                });
+    }
 }
