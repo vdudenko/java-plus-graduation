@@ -14,13 +14,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SimilarityCalculator {
     private final Map<Long, Map<Long, Double>> userEventWeights = new ConcurrentHashMap<>();
     private final Map<Long, Double> eventWeightSums = new ConcurrentHashMap<>();
-    private final Map<Long, Map<Long, Double>> minWeightsSums = new ConcurrentHashMap<>();
+    private final Map<String, Double> minWeightsSums = new ConcurrentHashMap<>();
 
     private static final double VIEW_WEIGHT = 0.4;
     private static final double REGISTER_WEIGHT = 0.8;
     private static final double LIKE_WEIGHT = 1.0;
 
-    public List<EventSimilarityAvro> processUserAction(long userId, long eventId, ActionTypeAvro actionType) {
+    public List<EventSimilarityAvro> processUserAction(long userId, long eventId, ActionTypeAvro actionType, Instant actionTimestamp) {
         double newWeight = getActionWeight(actionType);
 
         Map<Long, Double> userWeights = userEventWeights.computeIfAbsent(eventId, k -> new ConcurrentHashMap<>());
@@ -41,8 +41,11 @@ public class SimilarityCalculator {
             if (otherEventId == eventId) continue;
 
             Double weightInOther = entry.getValue().getOrDefault(userId, 0.0);
+            if (weightInOther == null) {
+                continue;
+            }
 
-            updateSimilarityPair(eventId, otherEventId, oldWeight, newWeight, weightInOther)
+            updateSimilarityPair(eventId, otherEventId, oldWeight, newWeight, weightInOther, actionTimestamp)
                     .ifPresent(similarities::add);
         }
         return similarities;
@@ -57,7 +60,7 @@ public class SimilarityCalculator {
     }
 
     private Optional<EventSimilarityAvro> updateSimilarityPair(long eventA, long eventB,
-                                                               double oldWA, double newWA, double weightB) {
+                                                               double oldWA, double newWA, double weightB, Instant timestamp) {
         double oldMin = Math.min(oldWA, weightB);
         double newMin = Math.min(newWA, weightB);
         double deltaMin = newMin - oldMin;
@@ -75,24 +78,26 @@ public class SimilarityCalculator {
 
         double score = currentMinSum / (normA * normB);
 
-        score = Math.round(score * 100.0) / 100.0;
-
-        return Optional.of(createSimilarityAvro(eventA, eventB, score));
+        return Optional.of(createSimilarityAvro(eventA, eventB, score, timestamp));
     }
 
     private double updateMinWeightsSum(long a, long b, double delta) {
-        long first = Math.min(a, b);
-        long second = Math.max(a, b);
-        return minWeightsSums.computeIfAbsent(first, k -> new ConcurrentHashMap<>())
-                .merge(second, delta, Double::sum);
+        String key = buildPairKey(a, b);
+        return minWeightsSums.merge(key, delta, Double::sum);
     }
 
-    private EventSimilarityAvro createSimilarityAvro(long a, long b, double score) {
+    private String buildPairKey(long id1, long id2) {
+        long first = Math.min(id1, id2);
+        long second = Math.max(id1, id2);
+        return first + "_" + second;
+    }
+
+    private EventSimilarityAvro createSimilarityAvro(long a, long b, double score,Instant timestamp) {
         return EventSimilarityAvro.newBuilder()
                 .setEventA(Math.min(a, b))
                 .setEventB(Math.max(a, b))
                 .setScore(score)
-                .setTimestamp(Instant.now())
+                .setTimestamp(timestamp)
                 .build();
     }
 

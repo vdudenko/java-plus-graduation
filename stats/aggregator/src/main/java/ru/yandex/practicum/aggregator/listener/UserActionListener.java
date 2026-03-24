@@ -26,7 +26,8 @@ public class UserActionListener {
             List<EventSimilarityAvro> updated = calc.processUserAction(
                     action.getUserId(),
                     action.getEventId(),
-                    action.getActionType()
+                    action.getActionType(),
+                    action.getTimestamp()
             );
 
             if (updated != null && !updated.isEmpty()) {
