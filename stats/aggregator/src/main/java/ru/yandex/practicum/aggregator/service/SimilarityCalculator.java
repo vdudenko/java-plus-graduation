@@ -43,14 +43,10 @@ public class SimilarityCalculator {
             long otherEventId = entry.getKey();
             if (otherEventId == eventId) continue;
 
-            Double weightInOther = entry.getValue().get(userId);
+            Double weightInOther = entry.getValue().getOrDefault(userId, 0.0);
 
-            if (weightInOther != null) {
-                updateSimilarityPair(eventId, otherEventId, oldWeight, newWeight, weightInOther, actionTimestamp)
-                        .ifPresent(sim -> {
-                            pub.publish(String.valueOf(sim.getEventA()), sim);
-                        });
-            }
+            updateSimilarityPair(eventId, otherEventId, oldWeight, newWeight, weightInOther, actionTimestamp)
+                    .ifPresent(pub::publish);
         }
     }
 
