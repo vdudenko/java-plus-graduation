@@ -1,5 +1,6 @@
 package ru.yandex.practicum.event.service;
 
+import com.google.common.collect.Lists;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -35,6 +36,8 @@ import ru.yandex.practicum.stats.client.CollectorClient;
 import ru.yandex.practicum.stats.client.RecommendationsClient;
 import ru.yandex.practicum.stats.proto.ActionTypeProto;
 import ru.yandex.practicum.stats.proto.InteractionsCountRequestProto;
+import ru.yandex.practicum.stats.proto.RecommendedEventProto;
+import ru.yandex.practicum.stats.proto.UserPredictionsRequestProto;
 import static ru.yandex.practicum.interaction.util.DateFormatter.parse;
 import static ru.yandex.practicum.interaction.util.SearchValidators.*;
 
@@ -43,7 +46,6 @@ import static ru.yandex.practicum.interaction.util.SearchValidators.*;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class EventServiceImpl implements EventService {
-
     private final EventRepository eventRepository;
     private final UserClient userRepository;
     private final RequestClient requestClient;
@@ -329,6 +331,23 @@ public class EventServiceImpl implements EventService {
         } catch (Exception e) {
             log.warn("Failed to send like: {}", e.getMessage());
         }
+    }
+
+    @Override
+    public List<EventFullDto> getRecommendations(Long userId, Integer maxResults) {
+
+        UserPredictionsRequestProto request = UserPredictionsRequestProto.newBuilder()
+                .setUserId(userId)
+                .setMaxResults(maxResults)
+                .build();
+
+        List<RecommendedEventProto> recs = Lists.newArrayList(recommendationsClient.getRecommendationsForUser(request));
+
+        return recs.stream().map(r -> {
+            EventFullDto dto = new EventFullDto();
+            dto.setId(r.getEventId());
+            return dto;
+        }).toList();
     }
 
     private void updateEventFieldsFromUserDto(Event event, UpdateEventUserDto dto) {

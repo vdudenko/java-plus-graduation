@@ -10,14 +10,7 @@ import ru.yandex.practicum.event.service.EventService;
 import ru.yandex.practicum.interaction.dto.event.EventFullDto;
 import ru.yandex.practicum.interaction.dto.event.PublicEventSearchRequest;
 import ru.yandex.practicum.interaction.enums.SortValue;
-import ru.yandex.practicum.stats.client.RecommendationsClient;
-import ru.yandex.practicum.stats.client.CollectorClient;
-import ru.yandex.practicum.stats.proto.UserPredictionsRequestProto;
-
 import java.util.List;
-import java.util.Spliterator;
-import java.util.Spliterators;
-import java.util.stream.StreamSupport;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,8 +18,6 @@ import java.util.stream.StreamSupport;
 @Validated
 public class PublicEventController {
     private final EventService eventService;
-    private final RecommendationsClient recommendationsClient;
-    private final CollectorClient collectorClient;
 
     @GetMapping("/events")
     public List<EventFullDto> getEvents(
@@ -60,25 +51,8 @@ public class PublicEventController {
     }
 
     @GetMapping("/events/recommendations")
-    public ResponseEntity<List<EventFullDto>> getRecommendations(
-            @RequestHeader("X-EWM-USER-ID") Long userId,
-            @RequestParam(defaultValue = "10") Integer maxResults) {
-
-        UserPredictionsRequestProto request = UserPredictionsRequestProto.newBuilder()
-                .setUserId(userId)
-                .setMaxResults(maxResults)
-                .build();
-
-        var recs = recommendationsClient.getRecommendationsForUser(request);
-        List<EventFullDto> result = StreamSupport.stream(
-                        Spliterators.spliteratorUnknownSize(recs, Spliterator.ORDERED), false)
-                .map(r -> {
-                    EventFullDto dto = new EventFullDto();
-                    dto.setId(r.getEventId());
-                    return dto;
-                })
-                .toList();
-
+    public ResponseEntity<List<EventFullDto>> getRecommendations(@RequestHeader("X-EWM-USER-ID") Long userId, @RequestParam(defaultValue = "10") Integer maxResults) {
+        List<EventFullDto> result  = eventService.getRecommendations(userId, maxResults);
         return ResponseEntity.ok(result);
     }
 

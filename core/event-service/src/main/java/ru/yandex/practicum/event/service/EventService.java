@@ -37,4 +37,6 @@ public interface EventService {
     EventFullDto getEventWithoutStatistic(Long eventId);
 
     void addLike(Long userId, Long eventId);
+
+    List<EventFullDto> getRecommendations(Long userId, Integer maxResults);
 }
