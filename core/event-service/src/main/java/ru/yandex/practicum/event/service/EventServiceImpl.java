@@ -12,19 +12,21 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import ru.yandex.practicum.event.entity.Event;
 import ru.yandex.practicum.event.entity.Location;
 import ru.yandex.practicum.event.feign.CategoryClient;
 import ru.yandex.practicum.event.feign.UserClient;
+import ru.yandex.practicum.event.feign.RequestClient;
 import ru.yandex.practicum.event.mapper.EventMapper;
 import ru.yandex.practicum.event.repository.EventRepository;
 import ru.yandex.practicum.interaction.dto.event.*;
 import ru.yandex.practicum.interaction.enums.EventState;
 import ru.yandex.practicum.interaction.enums.SortValue;
 import ru.yandex.practicum.interaction.exception.*;
-import com.google.protobuf.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,8 +35,6 @@ import ru.yandex.practicum.stats.client.CollectorClient;
 import ru.yandex.practicum.stats.client.RecommendationsClient;
 import ru.yandex.practicum.stats.proto.ActionTypeProto;
 import ru.yandex.practicum.stats.proto.InteractionsCountRequestProto;
-import ru.yandex.practicum.stats.proto.UserActionProto;
-
 import static ru.yandex.practicum.interaction.util.DateFormatter.parse;
 import static ru.yandex.practicum.interaction.util.SearchValidators.*;
 
@@ -46,6 +46,7 @@ public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
     private final UserClient userRepository;
+    private final RequestClient requestClient;
     private final CategoryClient categoryRepository;
     private final EntityManager entityManager;
     private final EventMapper eventMapper;
@@ -175,27 +176,14 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional
-    public EventFullDto getEvent(Long eventId, HttpServletRequest request) {
+    public EventFullDto getEvent(Long eventId, Long userId, HttpServletRequest request) {
         Event event = eventRepository.findByIdAndPublishedOnIsNotNull(eventId)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
 
-        Long userId = getUserIdFromHeader(request);
-        if (userId != null) {
-            try {
-                UserActionProto action = UserActionProto.newBuilder()
-                        .setUserId(userId)
-                        .setEventId(eventId)
-                        .setActionType(ActionTypeProto.ACTION_VIEW)
-                        .setTimestamp(Timestamp.newBuilder()
-                            .setSeconds(
-                                LocalDateTime.now().toEpochSecond(java.time.ZoneOffset.UTC)
-                            )
-                        )
-                        .build();
-                collectorClient.sendUserAction(action);
-            } catch (Exception e) {
-                log.warn("Failed to send view to collector: {}", e.getMessage());
-            }
+        try {
+            collectorClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_VIEW);
+        } catch (Exception e) {
+            log.warn("Failed to send view to collector: {}", e.getMessage());
         }
 
         try {
@@ -319,6 +307,28 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> new EventNotExistException("Event with id=" + eventId + " was not found"));
         event.setConfirmedRequests(confirmedCount);
         eventRepository.save(event);
+    }
+
+    @Override
+    @Transactional
+    public void addLike(Long userId, Long eventId) {
+        if (!userRepository.existsById(userId)) {
+            throw new UserNotExistException("User with id=" + userId + " was not found");
+        }
+
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotExistException("Event with id=" + eventId + " was not found"));
+
+        if (!requestClient.checkUserParticipated(userId, eventId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Пользователь может лайкать только посещённые мероприятия");
+        }
+
+        try {
+            collectorClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_LIKE);
+        } catch (Exception e) {
+            log.warn("Failed to send like: {}", e.getMessage());
+        }
     }
 
     private void updateEventFieldsFromUserDto(Event event, UpdateEventUserDto dto) {

@@ -12,9 +12,6 @@ import ru.yandex.practicum.interaction.dto.event.PublicEventSearchRequest;
 import ru.yandex.practicum.interaction.enums.SortValue;
 import ru.yandex.practicum.stats.client.RecommendationsClient;
 import ru.yandex.practicum.stats.client.CollectorClient;
-import ru.yandex.practicum.stats.proto.ActionTypeProto;
-import ru.yandex.practicum.stats.proto.InteractionsCountRequestProto;
-import ru.yandex.practicum.stats.proto.UserActionProto;
 import ru.yandex.practicum.stats.proto.UserPredictionsRequestProto;
 
 import java.util.List;
@@ -52,8 +49,9 @@ public class PublicEventController {
 
     @GetMapping("/events/{id}")
     public EventFullDto getEvent(@PathVariable Long id,
+                                 @RequestHeader("X-EWM-USER-ID") long userId,
                                  HttpServletRequest request) {
-        return eventService.getEvent(id, request);
+        return eventService.getEvent(id, userId, request);
     }
 
     @GetMapping("/events/top/byComment")
@@ -89,33 +87,7 @@ public class PublicEventController {
             @PathVariable Long eventId,
             @RequestHeader("X-EWM-USER-ID") Long userId) {
 
-        InteractionsCountRequestProto countRequest = InteractionsCountRequestProto.newBuilder()
-                .addEventId(eventId)
-                .build();
-
-        var counts = recommendationsClient.getInteractionsCount(countRequest);
-        boolean hasInteraction = false;
-        if (counts.hasNext()) {
-            hasInteraction = counts.next().getScore() > 0;
-        }
-
-        if (!hasInteraction) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        try {
-            UserActionProto action = UserActionProto.newBuilder()
-                    .setUserId(userId)
-                    .setEventId(eventId)
-                    .setActionType(ActionTypeProto.ACTION_LIKE)
-                    .setTimestamp(com.google.protobuf.Timestamp.newBuilder()
-                            .setSeconds(java.time.LocalDateTime.now().toEpochSecond(java.time.ZoneOffset.UTC)))
-                    .build();
-            collectorClient.sendUserAction(action);
-        } catch (Exception e) {
-            log.warn("Failed to send like: {}", e.getMessage());
-        }
-
-        return ResponseEntity.ok().build();
+        eventService.addLike(userId, eventId);
+        return ResponseEntity.noContent().build();
     }
 }

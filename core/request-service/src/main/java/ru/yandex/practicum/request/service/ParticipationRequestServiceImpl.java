@@ -1,6 +1,5 @@
 package ru.yandex.practicum.request.service;
 
-import com.google.protobuf.Timestamp;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +21,6 @@ import ru.yandex.practicum.request.feign.UserClient;
 import ru.yandex.practicum.request.repository.ParticipationRequestRepository;
 import ru.yandex.practicum.stats.client.CollectorClient;
 import ru.yandex.practicum.stats.proto.ActionTypeProto;
-import ru.yandex.practicum.stats.proto.UserActionProto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -56,19 +54,6 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         try {
             EventFullDto event = eventRepository.getEventWithoutStatistic(eventId);
 
-            try {
-                UserActionProto action = UserActionProto.newBuilder()
-                        .setUserId(userId)
-                        .setEventId(eventId)
-                        .setActionType(ActionTypeProto.ACTION_REGISTER)
-                        .setTimestamp(Timestamp.newBuilder()
-                                .setSeconds(LocalDateTime.now().toEpochSecond(java.time.ZoneOffset.UTC)))
-                        .build();
-                collectorClient.sendUserAction(action);
-            } catch (Exception e) {
-                log.warn("Failed to send registration to collector: {}", e.getMessage());
-            }
-
             if (event.getInitiator().equals(userId)) {
                 throw new ConflictException("Initiator cannot request own event");
             }
@@ -96,6 +81,12 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
                 log.info("Update event {}", event.getConfirmedRequests() + 1);
                 event.setConfirmedRequests(event.getConfirmedRequests() + 1);
                 updateEventConfirmedRequests(eventId, event.getConfirmedRequests());
+            }
+
+            try {
+                collectorClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_REGISTER);
+            } catch (Exception e) {
+                log.warn("Failed to send registration to collector: {}", e.getMessage());
             }
 
             return requestRepository.save(request);
@@ -230,6 +221,11 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
             }
             throw new RuntimeException("Error calling event service", e);
         }
+    }
+
+    @Override
+    public boolean exists(Long userId, Long eventId) {
+        return requestRepository.existsByRequesterAndEvent(userId, eventId);
     }
 
     private void updateEventConfirmedRequests(EventFullDto event) {
