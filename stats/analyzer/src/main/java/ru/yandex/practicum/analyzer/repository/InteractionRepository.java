@@ -21,8 +21,4 @@ public interface InteractionRepository extends JpaRepository<Interaction, Long> 
 
     @Query("SELECT i FROM Interaction i WHERE i.eventId IN :eventIds")
     List<Interaction> findByEventIdIn(@Param("eventIds") List<Long> eventIds);
-
-    // Получить взаимодействия пользователя для списка событий
-    @Query("SELECT i FROM Interaction i WHERE i.userId = :uid AND i.eventId IN :eventIds")
-    List<Interaction> findByUserIdAndEventIdIn(@Param("uid") Long uid, @Param("eventIds") List<Long> eventIds);
 }

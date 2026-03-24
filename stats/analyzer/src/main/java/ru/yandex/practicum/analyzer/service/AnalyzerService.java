@@ -137,29 +137,22 @@ public class AnalyzerService {
     }
 
     public List<RecommendedEventProto> getSimilarEvents(Long eventId, Long userId, int maxResults) {
-        List<Similarity> results = similarityRepository.findAllByEventIdOrdered(eventId);
+        List<Similarity> similarEvents = similarityRepository.findAllByEventIdOrdered(eventId);
 
-        if (results.isEmpty()) {
+        if (similarEvents.isEmpty()) {
             return Collections.emptyList();
         }
 
-        List<Long> candidateIds = results.stream()
-                .map(sim -> getPairEventId(sim, eventId))
-                .collect(Collectors.toList());
-
         Set<Long> interactedEventIds = new HashSet<>(
-                interactionRepository.findByUserIdAndEventIdIn(userId, candidateIds)
-                        .stream()
-                        .map(Interaction::getEventId)
-                        .collect(Collectors.toList())
+                interactionRepository.findEventIdsByUserId(userId)
         );
 
-        return results.stream()
+        return similarEvents.stream()
                 .map(sim -> {
                     Long candidateId = getPairEventId(sim, eventId);
                     return new AbstractMap.SimpleEntry<>(candidateId, sim.getSimilarity());
                 })
-                .filter(entry -> !interactedEventIds.contains(entry.getKey()))
+                .filter(entry -> !interactedEventIds.contains(entry.getKey()))  // Исключаем просмотренные
                 .limit(maxResults)
                 .map(entry -> RecommendedEventProto.newBuilder()
                         .setEventId(entry.getKey())

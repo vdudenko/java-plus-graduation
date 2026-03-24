@@ -15,12 +15,10 @@ public interface SimilarityRepository extends JpaRepository<Similarity, Long> {
     @Query("SELECT s FROM Similarity s WHERE s.event1 = :e1 AND s.event2 = :e2")
     Optional<Similarity> findByOrdered(Long e1, Long e2);
 
-    @Query(value = """
-            SELECT s FROM Similarity s " +
+    @Query("SELECT s FROM Similarity s " +
             "WHERE (s.event1 = :eid OR s.event2 = :eid) " +
             "AND s.similarity > 0 " +
-            "ORDER BY s.similarity DESC
-        """, nativeQuery = true)
+            "ORDER BY s.similarity DESC")
     List<Similarity> findAllByEventIdOrdered(@Param("eid") Long eid);
 
     @Query("SELECT s FROM Similarity s WHERE s.event1 IN :eventIds OR s.event2 IN :eventIds")
