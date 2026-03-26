@@ -19,6 +19,8 @@ import ru.yandex.practicum.request.feign.EventClient;
 import ru.yandex.practicum.request.mapper.ParticipationRequestMapper;
 import ru.yandex.practicum.request.feign.UserClient;
 import ru.yandex.practicum.request.repository.ParticipationRequestRepository;
+import ru.yandex.practicum.stats.client.CollectorClient;
+import ru.yandex.practicum.stats.proto.ActionTypeProto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -28,11 +30,11 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ParticipationRequestServiceImpl implements ParticipationRequestService {
-
     private final UserClient userRepository;
     private final EventClient eventRepository;
     private final ParticipationRequestRepository requestRepository;
     private final ParticipationRequestMapper participationRequestMapper;
+    private final CollectorClient collectorClient;
 
     @Transactional
     public List<ParticipationRequest> getUserRequests(Long userId) {
@@ -79,6 +81,12 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
                 log.info("Update event {}", event.getConfirmedRequests() + 1);
                 event.setConfirmedRequests(event.getConfirmedRequests() + 1);
                 updateEventConfirmedRequests(eventId, event.getConfirmedRequests());
+            }
+
+            try {
+                collectorClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_REGISTER);
+            } catch (Exception e) {
+                log.warn("Failed to send registration to collector: {}", e.getMessage());
             }
 
             return requestRepository.save(request);
@@ -213,6 +221,11 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
             }
             throw new RuntimeException("Error calling event service", e);
         }
+    }
+
+    @Override
+    public boolean exists(Long userId, Long eventId) {
+        return requestRepository.existsByRequesterAndEvent(userId, eventId);
     }
 
     private void updateEventConfirmedRequests(EventFullDto event) {

@@ -27,8 +27,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query("""
                 SELECT e
                 FROM Event e
-                ORDER BY e.views DESC
-                LIMIT :count
+                WHERE e.state = 'PUBLISHED'
+                ORDER BY e.rating DESC, e.eventDate ASC
             """)
     List<Event> getTopByComments(@Param("count") int count);
 

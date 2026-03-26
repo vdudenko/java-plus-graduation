@@ -1,0 +1,43 @@
+server:
+  port: 0
+grpc:
+  server:
+    port: ${GRPC_SERVER_PORT:0}
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+      dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: always
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+analyzer:
+  kafka:
+    user-actions:
+      group-id: analyzer-user-actions-group
+      topic: stats.user-actions.v1
+    similarities:
+      group-id: analyzer-similarities-group
+      topic: stats.events-similarity.v1
+  action-weight:
+    view: 0.4
+    register: 0.8
+    like: 1.0
+logging:
+  level:
+    root: INFO
+    ru.yandex.practicum.analyzer: DEBUG
+    org.springframework.kafka: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

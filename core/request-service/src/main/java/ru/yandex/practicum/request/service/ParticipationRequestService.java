@@ -17,4 +17,6 @@ public interface ParticipationRequestService {
     List<ParticipationRequestDto> getUserRequestsByEventId(Long userId, Long eventId);
 
     UpdateParticipationRequestListDto updateUserRequestsByEventId(Long userId, Long eventId, UpdateParticipationRequestDto updateParticipationRequestDto);
+
+    boolean exists(Long userId, Long eventId);
 }

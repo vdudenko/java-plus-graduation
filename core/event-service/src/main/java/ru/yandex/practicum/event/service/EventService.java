@@ -18,7 +18,7 @@ public interface EventService {
 
     EventFullDto updateEvent(Long eventId, UpdateEventAdminDto updateEventAdminDto);
 
-    EventFullDto getEvent(Long id, HttpServletRequest request);
+    EventFullDto getEvent(Long id, Long userId, HttpServletRequest request);
 
     List<EventFullDto> getEventsWithParamsByAdmin(AdminEventSearchRequest request);
 
@@ -35,4 +35,8 @@ public interface EventService {
     void updateEventConfirmedRequests(Long eventId, Long confirmedCount);
 
     EventFullDto getEventWithoutStatistic(Long eventId);
+
+    void addLike(Long userId, Long eventId);
+
+    List<EventFullDto> getRecommendations(Long userId, Integer maxResults);
 }

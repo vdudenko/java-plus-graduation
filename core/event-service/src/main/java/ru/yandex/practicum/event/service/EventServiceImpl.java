@@ -1,5 +1,6 @@
 package ru.yandex.practicum.event.service;
 
+import com.google.common.collect.Lists;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -12,24 +13,31 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import ru.yandex.practicum.event.entity.Event;
 import ru.yandex.practicum.event.entity.Location;
 import ru.yandex.practicum.event.feign.CategoryClient;
 import ru.yandex.practicum.event.feign.UserClient;
+import ru.yandex.practicum.event.feign.RequestClient;
 import ru.yandex.practicum.event.mapper.EventMapper;
 import ru.yandex.practicum.event.repository.EventRepository;
 import ru.yandex.practicum.interaction.dto.event.*;
 import ru.yandex.practicum.interaction.enums.EventState;
 import ru.yandex.practicum.interaction.enums.SortValue;
 import ru.yandex.practicum.interaction.exception.*;
-import ru.yandex.practicum.stats.client.StatisticsService;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-
+import ru.yandex.practicum.stats.client.CollectorClient;
+import ru.yandex.practicum.stats.client.RecommendationsClient;
+import ru.yandex.practicum.stats.proto.ActionTypeProto;
+import ru.yandex.practicum.stats.proto.InteractionsCountRequestProto;
+import ru.yandex.practicum.stats.proto.RecommendedEventProto;
+import ru.yandex.practicum.stats.proto.UserPredictionsRequestProto;
 import static ru.yandex.practicum.interaction.util.DateFormatter.parse;
 import static ru.yandex.practicum.interaction.util.SearchValidators.*;
 
@@ -38,13 +46,14 @@ import static ru.yandex.practicum.interaction.util.SearchValidators.*;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class EventServiceImpl implements EventService {
-
     private final EventRepository eventRepository;
     private final UserClient userRepository;
+    private final RequestClient requestClient;
     private final CategoryClient categoryRepository;
-    private final StatisticsService statisticsService;
     private final EntityManager entityManager;
     private final EventMapper eventMapper;
+    private final CollectorClient collectorClient;
+    private final RecommendationsClient recommendationsClient;
 
     private final Map<String, Set<Long>> viewCache = new ConcurrentHashMap<>();
 
@@ -81,17 +90,6 @@ public class EventServiceImpl implements EventService {
         Pageable pageable = PageRequest.of(from / size, size, Sort.by("id").descending());
 
         Page<Event> eventsPage = eventRepository.findAllByInitiator(userId, pageable);
-
-        if (eventsPage.hasContent()) {
-            List<Long> eventIds = eventsPage.getContent().stream()
-                    .map(Event::getId)
-                    .collect(Collectors.toList());
-
-            Map<Long, Long> viewsMap = statisticsService.getEventsViews(eventIds, null, false);
-            eventsPage.getContent().forEach(event ->
-                    event.setViews(viewsMap.getOrDefault(event.getId(), 0L))
-            );
-        }
 
         return eventsPage.getContent().stream()
                 .map(eventMapper::toEventShortDto)
@@ -133,9 +131,6 @@ public class EventServiceImpl implements EventService {
     public EventFullDto getEventByUser(Long userId, Long eventId) {
         Event event = eventRepository.findByIdAndInitiator(eventId, userId)
                 .orElseThrow(() -> new EventNotExistException("Event with id=" + eventId + " was not found"));
-
-        Map<Long, Long> viewsMap = statisticsService.getEventsViews(List.of(eventId), null, false);
-        event.setViews(viewsMap.getOrDefault(eventId, 0L));
 
         return eventMapper.toEventFullDto(event);
     }
@@ -183,24 +178,24 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional
-    public EventFullDto getEvent(Long eventId, HttpServletRequest request) {
+    public EventFullDto getEvent(Long eventId, Long userId, HttpServletRequest request) {
         Event event = eventRepository.findByIdAndPublishedOnIsNotNull(eventId)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
 
-        String clientIp = getClientIp(request);
-        boolean isUnique = isUniqueView(eventId, clientIp);
-
-        statisticsService.getEventsViews(List.of(eventId), request, true);
-
-        Long newViews = event.getViews();
-
-        if (isUnique) {
-            newViews = event.getViews() + 1;
+        try {
+            collectorClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_VIEW);
+        } catch (Exception e) {
+            log.warn("Failed to send view to collector: {}", e.getMessage());
         }
 
-        if (!newViews.equals(event.getViews())) {
-            event.setViews(newViews);
-            event = eventRepository.save(event);
+        try {
+            var counts = recommendationsClient.getInteractionsCount(InteractionsCountRequestProto.newBuilder().setEventId(0, eventId).build());
+            if (counts.hasNext()) {
+                event.setRating(counts.next().getScore());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch rating: {}", e.getMessage());
+            event.setRating(0.0);
         }
 
         return eventMapper.toEventFullDto(event);
@@ -239,13 +234,6 @@ public class EventServiceImpl implements EventService {
             return new ArrayList<>();
         }
 
-        List<Long> eventIds = events.stream()
-                .map(Event::getId)
-                .collect(Collectors.toList());
-
-        Map<Long, Long> viewsMap = statisticsService.getEventsViews(eventIds, null, false);
-        events.forEach(event -> event.setViews(viewsMap.getOrDefault(event.getId(), 0L)));
-
         return events.stream()
                 .map(eventMapper::toEventFullDto)
                 .collect(Collectors.toList());
@@ -276,16 +264,9 @@ public class EventServiceImpl implements EventService {
             return new ArrayList<>();
         }
 
-        List<Long> eventIds = events.stream()
-                .map(Event::getId)
-                .collect(Collectors.toList());
-
-        Map<Long, Long> viewsMap = statisticsService.getEventsViews(eventIds, httpRequest, true);
-        events.forEach(event -> event.setViews(viewsMap.getOrDefault(event.getId(), 0L)));
-
         if (shouldSort(request.getSort())) {
             Comparator<Event> comparator = request.getSort() == SortValue.VIEWS ?
-                    Comparator.comparing(Event::getViews, Comparator.nullsLast(Long::compareTo)).reversed() :
+                    Comparator.comparing(Event::getRating, Comparator.nullsLast(Double::compareTo)).reversed() :
                     Comparator.comparing(Event::getEventDate, Comparator.nullsLast(LocalDateTime::compareTo));
             events = events.stream()
                     .sorted(comparator)
@@ -328,6 +309,45 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> new EventNotExistException("Event with id=" + eventId + " was not found"));
         event.setConfirmedRequests(confirmedCount);
         eventRepository.save(event);
+    }
+
+    @Override
+    @Transactional
+    public void addLike(Long userId, Long eventId) {
+        if (!userRepository.existsById(userId)) {
+            throw new UserNotExistException("User with id=" + userId + " was not found");
+        }
+
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotExistException("Event with id=" + eventId + " was not found"));
+
+        if (!requestClient.checkUserParticipated(userId, eventId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Пользователь может лайкать только посещённые мероприятия");
+        }
+
+        try {
+            collectorClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_LIKE);
+        } catch (Exception e) {
+            log.warn("Failed to send like: {}", e.getMessage());
+        }
+    }
+
+    @Override
+    public List<EventFullDto> getRecommendations(Long userId, Integer maxResults) {
+
+        UserPredictionsRequestProto request = UserPredictionsRequestProto.newBuilder()
+                .setUserId(userId)
+                .setMaxResults(maxResults)
+                .build();
+
+        List<RecommendedEventProto> recs = Lists.newArrayList(recommendationsClient.getRecommendationsForUser(request));
+
+        return recs.stream().map(r -> {
+            EventFullDto dto = new EventFullDto();
+            dto.setId(r.getEventId());
+            return dto;
+        }).toList();
     }
 
     private void updateEventFieldsFromUserDto(Event event, UpdateEventUserDto dto) {
@@ -525,11 +545,19 @@ public class EventServiceImpl implements EventService {
                 .getResultList();
     }
 
-    private boolean isUniqueView(Long eventId, String clientIp) {
-        return viewCache.computeIfAbsent(clientIp, k -> new HashSet<>()).add(eventId);
-    }
-
     private String getClientIp(HttpServletRequest request) {
         return request.getRemoteAddr();
+    }
+
+    private Long getUserIdFromHeader(HttpServletRequest request) {
+        String userIdHeader = request.getHeader("X-EWM-USER-ID");
+        if (userIdHeader == null || userIdHeader.isEmpty()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(userIdHeader);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

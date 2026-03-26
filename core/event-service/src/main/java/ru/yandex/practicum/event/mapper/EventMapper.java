@@ -23,7 +23,7 @@ public interface EventMapper {
     @Mapping(target = "createdOn", expression = "java(LocalDateTime.now())")
     @Mapping(target = "state", constant = "PENDING")
     @Mapping(target = "confirmedRequests", constant = "0L")
-    @Mapping(target = "views", constant = "0L")
+    @Mapping(target = "rating", constant = "0.0")
     @Mapping(target = "paid", source = "newEventDto.paid", defaultExpression = "java(false)")
     @Mapping(target = "participantLimit", source = "newEventDto.participantLimit", defaultExpression = "java(0)")
     @Mapping(target = "requestModeration", source = "newEventDto.requestModeration", defaultExpression = "java(true)")

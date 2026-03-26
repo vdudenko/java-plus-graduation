@@ -63,4 +63,9 @@ public class PrivateRequestController {
 
         return service.updateUserRequestsByEventId(userId, eventId, updateParticipationRequestDto);
     }
+
+    @GetMapping("/events/{eventId}/exists")
+    public boolean exists(@PathVariable Long userId, @PathVariable Long eventId) {
+        return service.exists(userId, eventId);
+    }
 }
